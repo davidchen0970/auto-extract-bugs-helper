@@ -1,0 +1,42 @@
+:root {
+	--bg: #f3f5f8;
+	--bg2: #e9edf2;
+	--panel: #ffffff;
+	--panel2: #f6f8fb;
+	--border: #d9dfe7;
+	--border2: #c6ced9;
+	--text: #1d2530;
+	--muted: #55626f;
+	--dim: #8b97a4;
+	--accent: #2e6fd8;
+	--accent2: #245cd1;
+	--crit: #d93a2b;
+	--high: #e8770b;
+	--med: #b78a07;
+	--low: #7a8aa0;
+	--info: #1f6fd0;
+	--ok: #2e9e54;
+	--mono: ui-monospace, "SFMono-Regular", Consolas, "Roboto Mono", monospace;
+	--shadow: 0 6px 20px rgba(35, 50, 70, .10);
+}
+
+:root[data-theme="dark"] {
+	--bg: #0f1115;
+	--bg2: #161a21;
+	--panel: #1b2028;
+	--panel2: #20262f;
+	--border: #2a313c;
+	--border2: #39424f;
+	--text: #e7ebf0;
+	--muted: #93a0b1;
+	--dim: #6b7787;
+	--accent: #4f8cff;
+	--accent2: #7aa7ff;
+	--crit: #ff5d5d;
+	--high: #ff9a3d;
+	--med: #f4c542;
+	--low: #9db4c5;
+	--info: #6fb9f5;
+	--ok: #4caf7d;
+	--shadow: 0 6px 24px rgba(0, 0, 0, .35);
+}

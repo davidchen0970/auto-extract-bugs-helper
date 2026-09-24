@@ -1,0 +1,13 @@
+@media (max-width:640px) {
+	.topbar {
+		flex-wrap: wrap
+	}
+
+	.bug-sum {
+		grid-template-columns: 1fr
+	}
+
+	.bug-coord {
+		display: none
+	}
+}

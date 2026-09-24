@@ -1,0 +1,58 @@
+:root[data-theme="dark"] body {
+	background: radial-gradient(1200px 600px at 80% -10%, #1a2333, transparent), var(--bg);
+}
+
+:root[data-theme="dark"] .topbar {
+	background: rgba(15, 17, 21, .86)
+}
+
+:root[data-theme="dark"] .dz-inner.drag {
+	background: #121a26
+}
+
+:root[data-theme="dark"] .events li {
+	border-top: 1px solid rgba(255, 255, 255, .05)
+}
+
+:root[data-theme="dark"] .code {
+	border-color: #39414f;
+	background: #090c12
+}
+
+:root[data-theme="dark"] .code .snip-file {
+	background: #151b24;
+	color: var(--dim)
+}
+
+:root[data-theme="dark"] .code .src-line .ln {
+	color: #77849a;
+	background: rgba(255, 255, 255, .03);
+	border-right-color: rgba(255, 255, 255, .07)
+}
+
+:root[data-theme="dark"] .code .src-line .code-txt {
+	color: #dbe3ee
+}
+
+:root[data-theme="dark"] .code .src-line.hit .ln,
+:root[data-theme="dark"] .code .src-line.hit .code-txt {
+	color: #fff
+}
+
+:root[data-theme="dark"] .code .src-ev {
+	color: #7ab7ff
+}
+
+:root[data-theme="dark"] .tagchip.role {
+	background: rgba(79, 140, 255, .14);
+	color: var(--accent2)
+}
+
+:root[data-theme="dark"] .bug-chk {
+	background: rgba(79, 140, 255, .12);
+	color: var(--accent2)
+}
+
+:root[data-theme="dark"] .search svg {
+	opacity: .6
+}

@@ -1,0 +1,163 @@
+.btn {
+	border: 1px solid var(--border2);
+	background: var(--panel);
+	color: var(--text);
+	padding: 8px 14px;
+	border-radius: 8px;
+	transition: .15s;
+	font-weight: 600
+}
+
+.btn:hover {
+	border-color: var(--accent);
+	color: var(--accent2)
+}
+
+.btn.primary {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: #fff
+}
+
+.btn.primary:hover {
+	background: #245cd1;
+	color: #fff
+}
+
+.btn.sm {
+	padding: 5px 10px;
+	font-size: 12.5px;
+	border-radius: 6px
+}
+
+.sec-t {
+	border: 0;
+	background: var(--accent);
+	color: #fff;
+	font-size: 12.5px;
+	padding: 7px 14px;
+	border-radius: 8px;
+	margin-top: 6px;
+	font-weight: 700
+}
+
+.sec-t:hover {
+	background: #245cd1
+}
+
+.mini {
+	font-size: 11px;
+	color: var(--dim)
+}
+
+.grid3 {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+	gap: 10px;
+	margin-bottom: 10px
+}
+
+.pill {
+	display: inline-block;
+	font-size: 11px;
+	padding: 1px 8px;
+	border-radius: 20px;
+	border: 1px solid var(--border2)
+}
+
+.pill.ok {
+	color: var(--ok);
+	border-color: rgba(46, 158, 84, .45);
+	background: rgba(46, 158, 84, .09)
+}
+
+.pill.ignore {
+	color: var(--crit);
+	border-color: rgba(217, 58, 43, .45);
+	background: rgba(217, 58, 43, .08)
+}
+
+.pill.mixed {
+	color: var(--med);
+	border-color: rgba(183, 138, 7, .45);
+	background: rgba(183, 138, 7, .08)
+}
+
+.pager {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	margin-top: 14px;
+	flex-wrap: wrap
+}
+
+.pager button {
+	border: 1px solid var(--border2);
+	background: var(--panel);
+	color: var(--text);
+	padding: 6px 12px;
+	border-radius: 7px
+}
+
+.pager button:disabled {
+	opacity: .38;
+	cursor: default
+}
+
+.pager .pgno {
+	font-family: var(--mono);
+	color: var(--muted);
+	font-size: 12.5px;
+	min-width: 110px;
+	text-align: center
+}
+
+.empty {
+	color: var(--dim);
+	text-align: center;
+	padding: 28px 0;
+	font-size: 13px
+}
+
+.center {
+	text-align: center
+}
+
+.spinner {
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+	border: 3px solid var(--border);
+	border-top-color: var(--accent);
+	border-radius: 50%;
+	animation: sp .8s linear infinite;
+	vertical-align: -4px;
+	margin-right: 8px
+}
+
+@keyframes sp {
+	to {
+		transform: rotate(360deg)
+	}
+}
+
+.toast {
+	position: fixed;
+	left: 50%;
+	bottom: 24px;
+	transform: translateX(-50%);
+	background: var(--panel);
+	color: var(--text);
+	border: 1px solid var(--border2);
+	padding: 11px 18px;
+	border-radius: 9px;
+	box-shadow: var(--shadow);
+	z-index: 60;
+	max-width: 80vw
+}
+
+.toast.err {
+	border-color: var(--crit);
+	color: var(--crit)
+}
