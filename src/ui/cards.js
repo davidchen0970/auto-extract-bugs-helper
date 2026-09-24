@@ -1,4 +1,4 @@
-import { esc } from './util.js';
+import { esc, cveLink, cweLink } from './util.js';
 import { renderMd } from './md.js';
 import { sevLabel } from '../core/index.js';
 
@@ -21,7 +21,7 @@ export function covHead(b, coord) {
 	const loc = b.file ? `${esc(b.file)}:${b.line ? '<b>' + esc(b.line) + '</b>' : ''}` : '—';
 	const fnHtml = b.fn ? `<span class="fn">· ${esc(b.fn)}()</span>` : '';
 	const cat = b.category ? `<span class="bug-cat">${esc(b.category)}</span>` : '';
-	const cwe = b.cwe ? `<span class="pill">${esc(b.cwe)}</span>` : '';
+	const cwe = b.cwe ? `<span class="pill">${cweLink(b.cwe)}</span>` : '';
 	return `<div class="bug-sum">
       <span class="bug-coord">#${coord + 1}</span>
       <div class="bug-row2">
@@ -43,7 +43,7 @@ export function covBody(b) {
         <dt>位置</dt><dd>${esc(b.file)}${b.line ? ' : <b>' + esc(b.line) + '</b>' : ''}${b.fn ? '（' + esc(b.fn) + '）' : ''}</dd>
         <dt>類型</dt><dd>${esc(b.type)}${b.category ? ' · ' + esc(b.category) : ''}</dd>
         ${b.checker ? `<dt>Checker</dt><dd>${esc(b.checker)}</dd>` : ''}
-        ${b.cwe ? `<dt>CWE</dt><dd>${esc(b.cwe)}</dd>` : ''}
+        ${b.cwe ? `<dt>CWE</dt><dd>${cweLink(b.cwe)}</dd>` : ''}
         <dt>說明</dt><dd>${renderMd(b.desc || '—')}</dd>
       </div>
       ${events}
@@ -58,10 +58,10 @@ export function bdHead(b, coord) {
       <span class="bug-coord">#${coord + 1}</span>
       <div class="bug-row2">
         ${sevBadge(b.sev)}
-        <span class="bug-type">${esc(b.cve || 'CVE')}</span>
+        <span class="bug-type">${cveLink(b.cve)}</span>
         <span class="pill">${esc(b.component)} ${esc(b.version || '')}</span>
         ${b.cvss ? `<span class="pill">CVSS ${esc(b.cvss)}</span>` : ''}
-        ${b.cwe ? `<span class="pill">${esc(b.cwe)}</span>` : ''}
+        ${b.cwe ? `<span class="pill">${cweLink(b.cwe)}</span>` : ''}
         ${fixPill ? `<span class="${fixPill}">${fixTxt[b.fix] || esc(b.fix)}</span>` : ''}
       </div>
       <div class="bug-loc">${b.component ? esc(b.component) + ' ' + esc(b.version || '') : '—'}</div>
