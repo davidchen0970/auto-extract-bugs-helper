@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Bug Tarball Viewer · 缺陷預覽工作台</title>
+	<link rel="stylesheet" href="app.css">
+</head>
+
+<body>
+
+	<header class="topbar">
+		<div class="brand">
+			<div>
+				<h1>Bug Tarball Viewer</h1>
+				<p class="tag">解析 tar / tar.gz 並逐一預覽缺陷</p>
+			</div>
+		</div>
+		<div class="top-actions">
+			<button id="btn-theme" class="btn" title="切換亮/暗主題">切換主題</button>
+			<button id="btn-open" class="btn primary">開啟 tar / tar.gz</button>
+			<input type="file" id="file-input" accept=".tar,.tar.gz,.tgz,.gz,application/x-tar,application/gzip" hidden>
+		</div>
+	</header>
+
+
+	<section id="dropzone" class="dropzone">
+		<div class="dz-inner">
+			<h2>把 tar 檔拖到這裡</h2>
+			<p class="dz-sub">支援 <code>.tar</code>、<code>.tar.gz</code>、<code>.tgz</code>。完全在瀏覽器內解析，檔案不會上傳。</p>
+			<p class="dz-hint">會自動辨識 Coverity 靜態分析報表、BlackDuck 弱點清單與建置產物。</p>
+			<button id="btn-browse" class="btn">選擇檔案</button>
+		</div>
+	</section>
+
+	<main id="workbench" class="workbench" hidden>
+
+		<section class="panel archive">
+			<div class="panel-head">
+				<h2 class="panel-title">壓縮檔內容</h2>
+				<span id="archive-meta" class="muted"></span>
+			</div>
+			<div id="archive-list" class="archive-list"></div>
+		</section>
+
+		<section class="panel sources">
+			<div class="panel-head">
+				<h2 class="panel-title">缺陷來源</h2>
+			</div>
+			<div id="source-tabs" class="tabs"></div>
+			<div id="source-views" class="source-views"></div>
+		</section>
+	</main>
+
+
+	<div id="drawer-overlay" class="drawer-overlay"></div>
+	<section id="drawer" class="drawer" aria-hidden="true">
+		<header class="drawer-head">
+			<span class="drawer-title">缺陷詳情</span>
+			<button id="drawer-close" class="btn sm">關閉</button>
+		</header>
+		<div id="drawer-body" class="drawer-body"></div>
+	</section>
+
+	<div id="toast" class="toast" hidden></div>
+
+	<script type="module" src="app.js"></script>
+</body>
+
+</html>
