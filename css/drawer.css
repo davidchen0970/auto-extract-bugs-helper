@@ -1,0 +1,72 @@
+.drawer-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(8, 11, 16, .45);
+	z-index: 40;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity .2s
+}
+
+.drawer-overlay.show {
+	opacity: 1;
+	pointer-events: auto
+}
+
+.drawer {
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	width: min(900px, 96vw);
+	max-width: 94vw;
+	background: var(--panel);
+	border-left: 1px solid var(--border2);
+	box-shadow: var(--shadow);
+	z-index: 50;
+	display: flex;
+	flex-direction: column;
+	transform: translateX(103%);
+	visibility: hidden;
+	pointer-events: none;
+	transition: transform .22s ease, visibility .22s
+}
+
+.drawer.open {
+	transform: translateX(0);
+	visibility: visible;
+	pointer-events: auto
+}
+
+.drawer-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 14px;
+	border-bottom: 1px solid var(--border);
+	background: var(--bg)
+}
+
+.drawer-title {
+	font-weight: 700;
+	font-size: 13px
+}
+
+.drawer-body {
+	flex: 1;
+	overflow: auto;
+	padding: 12px
+}
+
+.drawer .bug-sum {
+	background: var(--bg2)
+}
+
+.drawer .bug-body {
+	display: block;
+	margin-top: 0
+}
+
+.drawer .bug-body .kv {
+	grid-template-columns: minmax(60px, auto) 1fr
+}

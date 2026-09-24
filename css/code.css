@@ -1,0 +1,79 @@
+.code {
+	margin: 12px 0 0;
+	overflow-x: auto;
+	border: 1px solid var(--border);
+	border-radius: 7px;
+	background: #f6f8fa
+}
+
+.code .snip-file {
+	font-family: var(--mono);
+	font-size: 11px;
+	color: var(--dim);
+	padding: 5px 10px;
+	border-bottom: 1px solid var(--border);
+	background: #eef1f4;
+	word-break: break-all
+}
+
+.code .src {
+	list-style: none;
+	margin: 0;
+	padding: 6px 0;
+	font-family: var(--mono);
+	font-size: 11.5px;
+	line-height: 1.5
+}
+
+.code .src>li {
+	display: block
+}
+
+.code .src-line {
+	display: flex;
+	align-items: baseline
+}
+
+.code .src-line .ln {
+	flex: 0 0 3.4em;
+	text-align: right;
+	padding-right: 10px;
+	color: #9aa5b1;
+	background: rgba(0, 0, 0, .03);
+	border-right: 1px solid rgba(0, 0, 0, .06);
+	user-select: none
+}
+
+.code .src-line .code-txt {
+	flex: 1 1 0%;
+	min-width: 0;
+	padding-right: 12px;
+	color: #24292f;
+	white-space: pre
+}
+
+.code .src-line.ev {
+	background: rgba(79, 140, 255, .07)
+}
+
+.code .src-line.hit {
+	background: rgba(255, 157, 61, .16)
+}
+
+.code .src-line.hit .ln,
+.code .src-line.hit .code-txt {
+	color: #1a1a1a;
+	font-weight: 700
+}
+
+.code .src-ev {
+	display: block;
+	padding: 2px 12px 2px calc(3.4em + 12px);
+	font-size: 11px;
+	color: #0d6ad8;
+	word-break: break-word
+}
+
+.code+.code {
+	margin-top: 10px
+}

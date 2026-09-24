@@ -1,0 +1,130 @@
+.topbar {
+	position: sticky;
+	top: 0;
+	z-index: 40;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 10px 22px;
+	background: rgba(255, 255, 255, .86);
+	backdrop-filter: blur(8px);
+	border-bottom: 1px solid var(--border);
+}
+
+.brand {
+	display: flex;
+	align-items: center;
+	gap: 12px
+}
+
+.topbar h1 {
+	font-size: 17px;
+	margin: 0;
+	letter-spacing: .2px
+}
+
+.tag {
+	font-size: 11.5px;
+	color: var(--muted);
+	margin: 0
+}
+
+.top-actions {
+	display: flex;
+	gap: 8px
+}
+
+.dropzone {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 58vh;
+	padding: 30px
+}
+
+.dz-inner {
+	max-width: 560px;
+	text-align: center;
+	border: 2px dashed var(--border2);
+	border-radius: 18px;
+	padding: 48px 44px;
+	background: var(--panel);
+	transition: .18s
+}
+
+.dz-inner.drag {
+	background: #e9f1ff;
+	border-color: var(--accent);
+	transform: scale(1.02)
+}
+
+.dz-inner h2 {
+	margin: 0 0 8px;
+	font-size: 20px
+}
+
+.dz-sub {
+	color: var(--muted);
+	margin: 0 0 6px
+}
+
+.dz-hint {
+	color: var(--dim);
+	font-size: 12.5px;
+	margin: 0 0 18px
+}
+
+.workbench {
+	max-width: 1280px;
+	margin: 0 auto;
+	padding: 18px 22px 40px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px
+}
+
+.panel {
+	background: var(--panel);
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	padding: 14px 16px;
+	box-shadow: var(--shadow)
+}
+
+.panel-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 10px
+}
+
+.panel-title {
+	font-size: 14px;
+	margin: 0;
+	letter-spacing: .3px;
+	text-transform: uppercase;
+	color: var(--muted)
+}
+
+.muted {
+	color: var(--dim);
+	font-size: 12.5px
+}
+
+.file {
+	display: inline-block;
+	max-width: 60ch;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	vertical-align: bottom
+}
+
+.foot {
+	color: var(--dim);
+	font-size: 12px;
+	text-align: center;
+	padding: 16px 0 26px
+}
