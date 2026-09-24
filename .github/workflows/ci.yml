@@ -51,11 +51,30 @@ jobs:
             echo "No test/ tree on this branch — suite skipped (OK)."
           fi
 
-  pages:
-    name: deploy to GitHub Pages
+  build:
+    name: build static site artifact
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [test]
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      # This project is a no-build static site served from the repo root.
+      - name: Upload static site as artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: github-pages
+          path: .
+
+  deploy:
+    name: deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
       pages: write
@@ -64,15 +83,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/configure-pages@v5
-
-      - name: Upload site artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-
-      - id: deployment
-        name: Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
