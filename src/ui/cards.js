@@ -1,4 +1,4 @@
-import { esc, cveLink, cweLink } from './util.js';
+import { esc, cveLink, cweLink, cveExtLinks } from './util.js';
 import { renderMd } from './md.js';
 import { sevLabel } from '../core/index.js';
 
@@ -78,7 +78,12 @@ export function bdBody(b) {
         ${b.official ? `<dt>官方解法</dt><dd>${renderMd(b.official)}</dd>` : ''}
         ${b.workaround ? `<dt>暫時規避</dt><dd>${esc(b.workaround)}</dd>` : ''}
       </div>
+      ${cveHelpBlock(b)}
     </div>`;
+}
+
+export function cveHelpBlock(b) {
+	return cveExtLinks(b.cve);
 }
 
 export function bugCard(b, coord, idx) {
