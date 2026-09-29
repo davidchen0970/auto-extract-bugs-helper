@@ -18,8 +18,13 @@
 			</div>
 		</div>
 		<div class="top-actions">
-			<button id="btn-theme" class="btn" title="切換亮/暗主題">切換主題</button>
-			<button id="btn-open" class="btn primary">開啟 tar / tar.gz</button>
+			<button id="btn-theme" class="btn desktop-act" title="切換亮/暗主題">切換主題</button>
+			<button id="btn-open" class="btn primary desktop-act">開啟 tar / tar.gz</button>
+			<button id="menu-toggle" class="btn primary menu-toggle" aria-haspopup="true" aria-expanded="false">選單 ▾</button>
+			<nav id="menu" class="menu" aria-label="操作選單">
+				<button id="menu-open" class="menu-item primary">開啟 tar / tar.gz</button>
+				<button id="menu-theme" class="menu-item">切換主題</button>
+			</nav>
 			<input type="file" id="file-input" accept=".tar,.tar.gz,.tgz,.gz,application/x-tar,application/gzip" hidden>
 		</div>
 	</header>
