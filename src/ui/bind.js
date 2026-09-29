@@ -15,6 +15,18 @@ export function bindUI() {
 
 	$('btn-theme').addEventListener('click', toggleTheme);
 
+	const mm = $('menu-toggle'), menu = $('menu');
+	mm.addEventListener('click', () => {
+		const open = menu.classList.toggle('open');
+		mm.setAttribute('aria-expanded', String(open));
+	});
+	const closeMenu = () => { menu.classList.remove('open'); mm.setAttribute('aria-expanded', 'false'); };
+	$('menu-open').addEventListener('click', () => { fin.click(); closeMenu(); });
+	$('menu-theme').addEventListener('click', () => { toggleTheme(); closeMenu(); });
+	document.addEventListener('click', (e) => {
+		if (menu.classList.contains('open') && !e.target.closest('.menu, #menu-toggle')) closeMenu();
+	});
+
 	['dragenter', 'dragover'].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add('drag'); }));
 	['dragleave', 'drop'].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove('drag'); }));
 	dz.addEventListener('drop', (e) => {
