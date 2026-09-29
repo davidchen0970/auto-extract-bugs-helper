@@ -1,13 +1,93 @@
-@media (max-width:640px) {
+@media (max-width: 900px) {
+	.workbench {
+		padding-right: 16px;
+		padding-left: 16px;
+	}
+}
+
+@media (max-width: 700px) {
+
 	.topbar {
-		flex-wrap: wrap
+		gap: 8px 12px;
+		padding: 10px 14px;
+	}
+	.topbar h1 {
+		font-size: 16px;
+		line-height: 1.3;
+	}
+	.top-actions .btn {
+		padding: 8px 14px;
+	}
+
+	.dropzone {
+		min-height: 46vh;
+		padding: 18px 14px;
+	}
+	.dz-inner {
+		padding: 30px 18px;
+	}
+	.dz-inner h2 {
+		font-size: 18px;
+	}
+
+	.workbench {
+		gap: 12px;
+		padding-right: 14px;
+		padding-left: 14px;
+	}
+	.panel {
+		padding: 12px;
+	}
+	.panel-head {
+		flex-wrap: wrap;
+		gap: 3px 8px;
+	}
+	.archive-list {
+		grid-template-columns: 1fr;
 	}
 
 	.bug-sum {
-		grid-template-columns: 1fr
+		grid-template-columns: 1fr;
+		gap: 2px 0;
+	}
+	.bug-coord {
+		display: none;
 	}
 
-	.bug-coord {
-		display: none
+	.search,
+	.seg {
+		flex: 1 1 100%;
+	}
+	.seg button {
+		flex: 1;
+		text-align: center;
+	}
+
+	.drawer {
+		width: 100vw;
+		max-width: 100vw;
+	}
+}
+
+@media (max-width: 460px) {
+	.panel-title {
+		font-size: 12.5px;
+	}
+	.muted,
+	.ar-size {
+		font-size: 11px;
+	}
+
+	.bug-sev {
+		letter-spacing: .02em;
+	}
+
+	.count {
+		white-space: normal;
+		text-align: center;
+	}
+
+	.toast {
+		max-width: 92vw;
 	}
 }
