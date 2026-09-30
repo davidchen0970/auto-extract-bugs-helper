@@ -3,7 +3,7 @@ import { state } from './state.js';
 import { toast } from './toast.js';
 import { renderArchive } from './archive.js';
 import { renderTabs, renderView } from './view.js';
-import { decompressGzip, parseTar, detectReport, looksLikeCoverity, looksLikeBlackDuck, parseCoverity, parseBlackDuck } from '../core/index.js';
+import { decompressGzip, parseTar, isTarBytes, detectReport, looksLikeCoverity, looksLikeBlackDuck, parseCoverity, parseBlackDuck } from '../core/index.js';
 
 export async function loadFile(file) {
 	const size = file.size;
@@ -11,7 +11,7 @@ export async function loadFile(file) {
 	$('dropzone').hidden = true;
 	$('workbench').hidden = false;
 	$('source-tabs').innerHTML = '<div class="empty"><span class="spinner"></span>正在解析…</div>';
-	$('archive-list').innerHTML = '<div class="empty"><span class="spinner"></span>讀取 tar 內容…</div>';
+	$('archive-list').innerHTML = '<div class="empty"><span class="spinner"></span>讀取內容…</div>';
 	$('archive-meta').textContent = fmtSize(size);
 
 	try {
@@ -24,6 +24,13 @@ export async function loadFile(file) {
 		}
 		state.raw = u8;
 		const t0 = performance.now();
+
+		if (!isTarBytes(u8)) {
+			classify([{ name: file.name, type: 'file', size, data: u8 }]);
+			toast(`已讀取報表檔：${file.name}`);
+			return;
+		}
+
 		const entries = parseTar(u8);
 		toast(`解析完成：${entries.length} 個檔案，耗時 ${(performance.now() - t0).toFixed(0)}ms`);
 		classify(entries);
