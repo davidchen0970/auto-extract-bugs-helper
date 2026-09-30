@@ -27,3 +27,13 @@ export function exportBug(b) {
 	download(blob, name);
 	toast('已下載缺陷 JSON');
 }
+
+export async function copyBug(b) {
+	if (!b) return toast('沒有可複製的缺陷', true);
+	try {
+		await navigator.clipboard.writeText(JSON.stringify(b, null, 2));
+		toast('已複製缺陷 JSON');
+	} catch (err) {
+		toast('複製失敗（剪貼簿不可用）', true);
+	}
+}

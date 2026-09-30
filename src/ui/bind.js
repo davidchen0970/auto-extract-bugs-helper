@@ -3,7 +3,7 @@ import { state } from './state.js';
 import { loadFile } from './load.js';
 import { renderList, lastPage } from './view.js';
 import { closeDrawer, currentBug } from './drawer.js';
-import { exportActive, exportBug } from './export.js';
+import { exportActive, exportBug, copyBug } from './export.js';
 import { toggleTheme, focusSearch } from './theme.js';
 
 export function bindUI() {
@@ -52,6 +52,7 @@ export function bindUI() {
 	});
 
 	$('drawer-close').addEventListener('click', closeDrawer);
+	$('drawer-copy').addEventListener('click', () => copyBug(currentBug()));
 	$('drawer-download').addEventListener('click', () => exportBug(currentBug()));
 	$('drawer-overlay').addEventListener('click', closeDrawer);
 
