@@ -18,3 +18,12 @@ export function exportActive() {
 	download(blob, (shortName(r.file) || 'report') + '.bugs.json');
 	toast('已匯出 JSON');
 }
+
+export function exportBug(b) {
+	if (!b) return toast('沒有可下載的缺陷', true);
+	const id = b.cve || b.type || b.checker || b.file || 'bug';
+	const name = 'bug-' + String(id).replace(/[^A-Za-z0-9._-]+/g, '-') + '.json';
+	const blob = new Blob([JSON.stringify(b, null, 2)], { type: 'application/json' });
+	download(blob, name);
+	toast('已下載缺陷 JSON');
+}
