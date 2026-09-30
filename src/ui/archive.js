@@ -19,7 +19,7 @@ export function renderArchive() {
 		...extra.map((a) => ({ name: a.name, type: a.type, size: a.size })),
 	];
 	if (all.length === 0) {
-		listEl.innerHTML = '<div class="empty">此 tar 內沒有可解析的報表。支援 Coverity HTML 與 BlackDuck CSV。</div>';
+		listEl.innerHTML = '<div class="empty">此檔案內沒有可解析的報表。支援 Coverity HTML 與 BlackDuck CSV（可直接載入單一報表，或整包 tar）。</div>';
 		$('archive-meta').textContent = state.entries.length + ' 個檔案';
 		return;
 	}

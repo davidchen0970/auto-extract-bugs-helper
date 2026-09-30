@@ -14,26 +14,26 @@
 		<div class="brand">
 			<div>
 				<h1>Bug Tarball Viewer</h1>
-				<p class="tag">解析 tar / tar.gz 並逐一預覽缺陷</p>
+				<p class="tag">解析 tar / tar.gz 或單一報表檔並逐一預覽缺陷</p>
 			</div>
 		</div>
 		<div class="top-actions">
 			<button id="btn-theme" class="btn desktop-act" title="切換亮/暗主題">切換主題</button>
-			<button id="btn-open" class="btn primary desktop-act">開啟 tar / tar.gz</button>
+			<button id="btn-open" class="btn primary desktop-act">開啟 tar / tar.gz / 報表</button>
 			<button id="menu-toggle" class="btn primary menu-toggle" aria-haspopup="true" aria-expanded="false">選單 ▾</button>
 			<nav id="menu" class="menu" aria-label="操作選單">
-				<button id="menu-open" class="menu-item primary">開啟 tar / tar.gz</button>
+				<button id="menu-open" class="menu-item primary">開啟 tar / tar.gz / 報表</button>
 				<button id="menu-theme" class="menu-item">切換主題</button>
 			</nav>
-			<input type="file" id="file-input" accept=".tar,.tar.gz,.tgz,.gz,application/x-tar,application/gzip" hidden>
+			<input type="file" id="file-input" accept=".tar,.tar.gz,.tgz,.gz,.html,.csv,application/x-tar,application/gzip,text/html,text/csv" hidden>
 		</div>
 	</header>
 
 
 	<section id="dropzone" class="dropzone">
 		<div class="dz-inner">
-			<h2>把 tar 檔拖到這裡</h2>
-			<p class="dz-sub">支援 <code>.tar</code>、<code>.tar.gz</code>、<code>.tgz</code>。完全在瀏覽器內解析，檔案不會上傳。</p>
+			<h2>將 tar 或報表檔拖放於此</h2>
+			<p class="dz-sub">支援 <code>.tar</code>、<code>.tar.gz</code>、<code>.tgz</code>，也可直接拖入單一的 <code>.html</code> ／ <code>.csv</code> 報表檔。完全在瀏覽器內解析，檔案不會上傳。</p>
 			<p class="dz-hint">會自動辨識 Coverity 靜態分析報表、BlackDuck 弱點清單與建置產物。</p>
 			<button id="btn-browse" class="btn">選擇檔案</button>
 		</div>

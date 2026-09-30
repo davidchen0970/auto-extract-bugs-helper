@@ -11,6 +11,8 @@ function makeFileTar(name, content) {
 	buf.set(new TextEncoder().encode(sizeOct), 124);
 	buf[156] = 0x30; // typeflag '0' = regular file
 	buf.set(data, 512);
+	// ustar magic at 257..262
+	buf.set(new TextEncoder().encode('ustar\0'), 257);
 	return buf;
 }
 
