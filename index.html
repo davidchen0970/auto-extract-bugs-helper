@@ -23,6 +23,7 @@
 			<button id="menu-toggle" class="btn primary menu-toggle" aria-haspopup="true" aria-expanded="false">選單 ▾</button>
 			<nav id="menu" class="menu" aria-label="操作選單">
 				<button id="menu-open" class="menu-item primary">開啟 tar / tar.gz / 報表</button>
+				<button id="menu-compare" class="menu-item">比對兩份報表</button>
 				<button id="menu-theme" class="menu-item">切換主題</button>
 			</nav>
 			<input type="file" id="file-input" accept=".tar,.tar.gz,.tgz,.gz,.html,.csv,application/x-tar,application/gzip,text/html,text/csv" hidden>
@@ -30,33 +31,76 @@
 	</header>
 
 
-	<section id="dropzone" class="dropzone">
-		<div class="dz-inner">
-			<h2>將 tar 或報表檔拖放於此</h2>
-			<p class="dz-sub">支援 <code>.tar</code>、<code>.tar.gz</code>、<code>.tgz</code>，也可直接拖入單一的 <code>.html</code> ／ <code>.csv</code> 報表檔。完全在瀏覽器內解析，檔案不會上傳。</p>
-			<p class="dz-hint">會自動辨識 Coverity 靜態分析報表、BlackDuck 弱點清單與建置產物。</p>
-			<button id="btn-browse" class="btn">選擇檔案</button>
-		</div>
+	<nav id="app-tabs" class="app-tabs" aria-label="工作模式">
+		<button id="tab-open" class="app-tab active" data-page="open">開啟報表</button>
+		<button id="tab-compare" class="app-tab" data-page="compare">比對兩份報表</button>
+	</nav>
+
+
+	<section id="page-open" class="app-page" data-page="open">
+
+		<section id="dropzone" class="dropzone">
+			<div class="dz-inner">
+				<h2>將 tar 或報表檔拖放於此</h2>
+				<p class="dz-sub">支援 <code>.tar</code>、<code>.tar.gz</code>、<code>.tgz</code>，也可直接拖入單一的 <code>.html</code> ／ <code>.csv</code> 報表檔。完全在瀏覽器內解析，檔案不會上傳。</p>
+				<p class="dz-hint">會自動辨識 Coverity 靜態分析報表、BlackDuck 弱點清單與建置產物。</p>
+				<button id="btn-browse" class="btn">選擇檔案</button>
+			</div>
+		</section>
+
+		<main id="workbench" class="workbench" hidden>
+
+			<section class="panel archive">
+				<div class="panel-head">
+					<h2 class="panel-title">壓縮檔內容</h2>
+					<span id="archive-meta" class="muted"></span>
+				</div>
+				<div id="archive-list" class="archive-list"></div>
+			</section>
+
+			<section class="panel sources">
+				<div class="panel-head">
+					<h2 class="panel-title">缺陷來源</h2>
+				</div>
+				<div id="source-tabs" class="tabs"></div>
+				<div id="source-views" class="source-views"></div>
+			</section>
+		</main>
+
 	</section>
 
-	<main id="workbench" class="workbench" hidden>
 
-		<section class="panel archive">
-			<div class="panel-head">
-				<h2 class="panel-title">壓縮檔內容</h2>
-				<span id="archive-meta" class="muted"></span>
-			</div>
-			<div id="archive-list" class="archive-list"></div>
-		</section>
+	<section id="page-compare" class="app-page" data-page="compare" hidden>
 
-		<section class="panel sources">
-			<div class="panel-head">
-				<h2 class="panel-title">缺陷來源</h2>
+		<div class="cmp-page">
+			<h2 class="panel-title">比對兩份同類型報表</h2>
+			<p class="muted">選兩個<b>相同類型</b>的報表檔（皆 Coverity 或皆 BlackDuck／單檔或 tar 皆可），系統會以缺陷身份自動分辨「新增（僅 B）／移除（僅 A）／內容差異（兩邊都有但改變）」。完全在瀏覽器內比對，檔案不會上傳。</p>
+
+			<div class="compare-slots">
+				<div class="slot" id="slot-a">
+					<h3>報表 A <span class="muted">（基準）</span></h3>
+					<div class="slot-drop">點選或拖放於此</div>
+					<div class="slot-name" id="slot-a-name"></div>
+					<button id="pick-a" class="btn sm">選擇檔案 A</button>
+				</div>
+				<div class="slot" id="slot-b">
+					<h3>報表 B <span class="muted">（現況）</span></h3>
+					<div class="slot-drop">點選或拖放於此</div>
+					<div class="slot-name" id="slot-b-name"></div>
+					<button id="pick-b" class="btn sm">選擇檔案 B</button>
+				</div>
 			</div>
-			<div id="source-tabs" class="tabs"></div>
-			<div id="source-views" class="source-views"></div>
-		</section>
-	</main>
+
+			<input type="file" id="cmp-file" accept=".tar,.tar.gz,.tgz,.gz,.html,.csv,application/x-tar,application/gzip,text/html,text/csv" hidden>
+
+			<div class="compare-actions">
+				<button id="compare-run" class="btn primary" disabled>開始比對</button>
+			</div>
+
+			<div id="compare-results" class="compare-results" hidden></div>
+		</div>
+
+	</section>
 
 
 	<div id="drawer-overlay" class="drawer-overlay"></div>
