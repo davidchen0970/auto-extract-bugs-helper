@@ -102,9 +102,9 @@ export function renderList() {
 	if (!slice.length) {
 		listEl.innerHTML = '<div class="empty">沒有符合的缺陷。</div>';
 	} else {
-		listEl.innerHTML = slice.map((b, i) => bugCard(b, start + i, i)).join('');
+		listEl.innerHTML = slice.map((b, i) => bugCard(b, start + i, start + i)).join('');
 		listEl.querySelectorAll('.bug').forEach((el) => {
-			el.addEventListener('click', (e) => { if (!e.target.closest('button')) openDrawer(shown[+el.dataset.i], start + +el.dataset.i); });
+			el.addEventListener('click', (e) => { if (!e.target.closest('button')) openDrawer(shown[+el.dataset.i], +el.dataset.i); });
 		});
 	}
 }
