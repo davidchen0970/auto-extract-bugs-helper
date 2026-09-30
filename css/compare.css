@@ -1,0 +1,107 @@
+/* Top-level tabs: open-report vs compare-two. */
+.app-tabs {
+	display: flex;
+	gap: 6px;
+	padding: 8px 16px 0;
+	max-width: 1200px;
+	margin: 0 auto;
+}
+.app-tab {
+	border: 1px solid var(--border);
+	border-bottom: none;
+	background: var(--bg2);
+	color: var(--muted);
+	padding: 8px 18px;
+	border-radius: 8px 8px 0 0;
+	cursor: pointer;
+	font-size: 14px;
+}
+.app-tab.active {
+	background: var(--panel);
+	color: var(--accent);
+	font-weight: 600;
+	border-color: var(--border2);
+}
+.app-page {
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 14px 16px;
+	border-top: 1px solid var(--border2);
+}
+
+/* Compare page container. */
+.cmp-page {
+	background: var(--panel);
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	padding: 18px;
+}
+.cmp-page .panel-title { margin: 0 0 6px; }
+.cmp-page .muted { display: block; margin-bottom: 10px; }
+
+.compare-slots {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 14px;
+	margin: 14px 0;
+}
+.slot {
+	border: 1px dashed var(--border2);
+	border-radius: 8px;
+	padding: 14px;
+	text-align: center;
+	cursor: pointer;
+	transition: border-color 0.15s, background 0.15s;
+}
+.slot:hover, .slot.cmp-drag {
+	border-color: var(--accent);
+	background: var(--panel2);
+}
+.slot h3 { margin: 0 0 8px; font-size: 14px; }
+.slot-drop {
+	font-size: 13px;
+	color: var(--muted);
+	padding: 10px 0;
+}
+.slot-name {
+	font-size: 12px;
+	color: var(--text);
+	min-height: 16px;
+	margin-bottom: 8px;
+	word-break: break-all;
+}
+.compare-actions {
+	text-align: center;
+	margin: 8px 0 4px;
+}
+
+.compare-results { margin-top: 12px; }
+.cmp-summary {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 10px;
+	margin-bottom: 14px;
+}
+.cmp-card { text-align: center; }
+.cmp-section { margin-bottom: 20px; }
+.cmp-section h3 {
+	font-size: 14px;
+	margin: 0 0 8px;
+	border-bottom: 1px solid var(--border);
+	padding-bottom: 6px;
+}
+.cmp-group { display: flex; flex-direction: column; gap: 8px; }
+/* Each compare entry is a plain block so the defect card stretches edge-to-edge
+   and its right border lines up with the container's right edge. */
+.cmp-item { display: block; }
+.cmp-split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.cmp-side-tag {
+	font-size: 11px;
+	color: var(--muted);
+	margin-bottom: 4px;
+}
+
+@media (max-width: 720px) {
+	.compare-slots, .cmp-summary, .cmp-split { grid-template-columns: 1fr; }
+	.cmp-summary { grid-template-columns: repeat(2, 1fr); }
+}
