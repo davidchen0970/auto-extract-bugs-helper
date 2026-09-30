@@ -18,3 +18,22 @@ export function exportActive() {
 	download(blob, (shortName(r.file) || 'report') + '.bugs.json');
 	toast('已匯出 JSON');
 }
+
+export function exportBug(b) {
+	if (!b) return toast('沒有可下載的缺陷', true);
+	const id = b.cve || b.type || b.checker || b.file || 'bug';
+	const name = 'bug-' + String(id).replace(/[^A-Za-z0-9._-]+/g, '-') + '.json';
+	const blob = new Blob([JSON.stringify(b, null, 2)], { type: 'application/json' });
+	download(blob, name);
+	toast('已下載缺陷 JSON');
+}
+
+export async function copyBug(b) {
+	if (!b) return toast('沒有可複製的缺陷', true);
+	try {
+		await navigator.clipboard.writeText(JSON.stringify(b, null, 2));
+		toast('已複製缺陷 JSON');
+	} catch (err) {
+		toast('複製失敗（剪貼簿不可用）', true);
+	}
+}

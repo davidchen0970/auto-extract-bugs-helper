@@ -1,11 +1,18 @@
 import { $ } from './util.js';
 import { bugDetail } from './cards.js';
 
+let activeBug = null;
+
 export function openDrawer(b, coord) {
+	activeBug = b;
 	$('drawer-body').innerHTML = bugDetail(b, coord);
 	$('drawer').classList.add('open');
 	$('drawer').setAttribute('aria-hidden', 'false');
 	$('drawer-overlay').classList.add('show');
+}
+
+export function currentBug() {
+	return activeBug;
 }
 
 export function closeDrawer() {
