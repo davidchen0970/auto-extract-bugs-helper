@@ -11,6 +11,19 @@ const cmp = {
 	fileB: null,
 };
 
+// Per report-type block, results are split into three switchable category pages
+// (新增 / 移除 / 內容差異), each paginated like the open-report view.
+const PER_PAGE = 10;
+const EMPTY_TEXT = { added: '無新增缺陷', removed: '無移除缺陷', changed: '無內容差異' };
+const view = { cat: 'added', page: 0 };
+
+// The bugs / split-pairs belonging to one category of a diff.
+function catItems(diff, cat) {
+	if (cat === 'added') return diff.added || [];
+	if (cat === 'removed') return diff.removed || [];
+	return diff.changed || [];
+}
+
 const PAGES = ['open', 'compare', 'cwe'];
 function switchPage(name) {
 	for (const p of PAGES) {
@@ -55,35 +68,20 @@ export function reportTypes(aList, bList) {
 	return TYPE_ORDER.filter((t) => seen.has(t)).concat([...seen].filter((t) => !TYPE_ORDER.includes(t)));
 }
 
-// HTML for one report type's summary + added/removed/changed sections.
+// One sub-tab button for a category. Only the active category's cards are in the
+// DOM; switching tabs re-renders the pane for that category (paginated).
+function subTab(cat, label, n) {
+	return '<button type="button" class="cmp-subtab' + (view.cat === cat ? ' active' : '') + '" data-cat="' + cat + '">' +
+		label + ' <span class="mini">' + fmt(n) + '</span></button>';
+}
+
+// HTML for one report type's summary cards + category sub-tabs. The actual card
+// list lives in .cmp-subpane, rendered lazily by renderPane().
 function blockHtml(diff) {
 	const added = diff.added || [];
 	const removed = diff.removed || [];
 	const changed = diff.changed || [];
 	const same = diff.same || [];
-
-	const groupHtml = (arr, renderer) => {
-		let out = '';
-		const len = arr.length;
-		for (let i = 0; i < len; i++) out += renderer(arr[i], i);
-		return out;
-	};
-
-	const addedHtml = added.length
-		? groupHtml(added, (b, i) => '<div class="cmp-item">' + bugCard(b, i, i) + '</div>')
-		: '<div class="empty">無新增缺陷</div>';
-
-	const removedHtml = removed.length
-		? groupHtml(removed, (b, i) => '<div class="cmp-item">' + bugCard(b, i, i) + '</div>')
-		: '<div class="empty">無移除缺陷</div>';
-
-	const changedHtml = changed.length
-		? groupHtml(changed, (c, i) =>
-			'<div class="cmp-item"><div class="cmp-split">' +
-			'<div class="cmp-side" data-side-before="' + i + '"><div class="cmp-side-tag">報表 A（基準）</div>' + bugCard(c.before, i, i) + '</div>' +
-			'<div class="cmp-side" data-side-after="' + i + '"><div class="cmp-side-tag">報表 B（現況）</div>' + bugCard(c.after, i, i) + '</div>' +
-			'</div></div>')
-		: '<div class="empty">無內容差異</div>';
 
 	return '<div class="cmp-summary">' +
 		'<div class="card cmp-card"><div class="card-n" style="color:var(--high)">' + fmt(added.length) + '</div><div class="card-l">新增</div></div>' +
@@ -91,9 +89,77 @@ function blockHtml(diff) {
 		'<div class="card cmp-card"><div class="card-n" style="color:var(--info)">' + fmt(changed.length) + '</div><div class="card-l">內容差異</div></div>' +
 		'<div class="card cmp-card"><div class="card-n">' + fmt(same.length) + '</div><div class="card-l">相同</div></div>' +
 		'</div>' +
-		'<div class="cmp-section" data-list="added"><h3>新增 <span class="muted">僅存在於報表 B，點擊看詳細</span></h3><div class="cmp-group">' + addedHtml + '</div></div>' +
-		'<div class="cmp-section" data-list="removed"><h3>移除 <span class="muted">僅存在於報表 A（基準），點擊看詳細</span></h3><div class="cmp-group">' + removedHtml + '</div></div>' +
-		'<div class="cmp-section"><h3>內容差異 <span class="muted">兩邊都有但內容改變</span></h3><div class="cmp-group">' + changedHtml + '</div></div>';
+		'<div class="cmp-subtabs">' +
+		subTab('added', '新增', added.length) +
+		subTab('removed', '移除', removed.length) +
+		subTab('changed', '內容差異', changed.length) +
+		'</div>' +
+		'<div class="cmp-subpane"></div>';
+}
+
+// Render the active category page (10 per page) into this block's pane.
+function renderPane(root, diff) {
+	const pane = root.querySelector('.cmp-subpane');
+	if (!pane) return;
+
+	const cat = view.cat;
+	const items = catItems(diff, cat);
+	const per = PER_PAGE;
+	const totalPages = Math.max(1, Math.ceil(items.length / per));
+	if (view.page > totalPages - 1) view.page = Math.max(0, totalPages - 1);
+	const start = view.page * per;
+	const slice = items.slice(start, start + per);
+
+	let listHtml;
+	if (!slice.length) {
+		listHtml = '<div class="empty">' + EMPTY_TEXT[cat] + '</div>';
+	} else if (cat === 'changed') {
+		listHtml = slice.map((c, i) => {
+			const k = start + i;
+			return '<div class="cmp-item"><div class="cmp-split">' +
+				'<div class="cmp-side" data-side-before="' + k + '"><div class="cmp-side-tag">報表 A（基準）</div>' + bugCard(c.before, k, k) + '</div>' +
+				'<div class="cmp-side" data-side-after="' + k + '"><div class="cmp-side-tag">報表 B（現況）</div>' + bugCard(c.after, k, k) + '</div>' +
+				'</div></div>';
+		}).join('');
+	} else {
+		listHtml = slice.map((b, i) => '<div class="cmp-item">' + bugCard(b, start + i, start + i) + '</div>').join('');
+	}
+
+	pane.innerHTML =
+		'<div class="cmp-group">' + listHtml + '</div>' +
+		'<div class="pager">' +
+		'<button type="button" class="cmp-pg-prev"' + (view.page === 0 ? ' disabled' : '') + '>‹ 上一頁</button>' +
+		'<span class="pgno">第 ' + fmt(view.page + 1) + ' / ' + fmt(totalPages) + ' 頁 · 共 ' + fmt(items.length) + ' 筆</span>' +
+		'<button type="button" class="cmp-pg-next"' + (view.page >= totalPages - 1 ? ' disabled' : '') + '>下一頁 ›</button>' +
+		'</div>';
+
+	bindPaneCards(root, diff, cat, items);
+
+	const prev = pane.querySelector('.cmp-pg-prev');
+	const next = pane.querySelector('.cmp-pg-next');
+	if (prev) prev.addEventListener('click', () => { view.page--; renderPane(root, diff); });
+	if (next) next.addEventListener('click', () => { view.page++; renderPane(root, diff); });
+}
+
+// Wire the active category page's cards to the detail drawer.
+function bindPaneCards(root, diff, cat, items) {
+	const changed = diff.changed || [];
+	if (cat === 'changed') {
+		root.querySelectorAll('.cmp-subpane [data-side-before]').forEach((el) => {
+			const i = +el.dataset.sideBefore;
+			if (changed[i]) el.addEventListener('click', () => openDrawer(changed[i].before, i));
+		});
+		root.querySelectorAll('.cmp-subpane [data-side-after]').forEach((el) => {
+			const i = +el.dataset.sideAfter;
+			if (changed[i]) el.addEventListener('click', () => openDrawer(changed[i].after, i));
+		});
+	} else {
+		const bugs = items;
+		root.querySelectorAll('.cmp-subpane .bug').forEach((el) => {
+			const i = +el.dataset.i;
+			if (bugs[i]) el.addEventListener('click', () => openDrawer(bugs[i], i));
+		});
+	}
 }
 
 // Render the diff results as BOOKMARK TABS — one tab per report type present in
@@ -135,34 +201,27 @@ function renderType(results, idx) {
 	if (!pane || !results[idx]) return;
 
 	const { type, diff } = results[idx];
+	view.cat = 'added';
+	view.page = 0;
 	pane.innerHTML = '<div class="cmp-block"><h3 class="cmp-type-title">' + typeName(type) + '</h3>' + blockHtml(diff) + '</div>';
 	bindBlock(pane.querySelector('.cmp-block'), diff);
 
 	wrap.querySelectorAll('.cmp-tab').forEach((b) => b.classList.toggle('active', +b.dataset.cmpTab === idx));
 }
 
-// Wire a single report-type block: drawer on added / removed cards and on each
-// side of a changed bug.
+// Wire a single report-type block: category sub-tabs switch 新增 / 移除 / 內容差異,
+// each of which is a paginated page rendered by renderPane().
 function bindBlock(root, diff) {
 	if (!root) return;
-	const changed = diff.changed || [];
-	bindCompareCards(root, 'added', diff.added || []);
-	bindCompareCards(root, 'removed', diff.removed || []);
-	root.querySelectorAll('[data-side-before]').forEach((el) => {
-		const i = +el.dataset.sideBefore;
-		if (changed[i]) el.addEventListener('click', () => openDrawer(changed[i].before, i));
+	root.querySelectorAll('.cmp-subtab').forEach((b) => {
+		b.addEventListener('click', () => {
+			view.cat = b.dataset.cat;
+			view.page = 0;
+			root.querySelectorAll('.cmp-subtab').forEach((x) => x.classList.toggle('active', x === b));
+			renderPane(root, diff);
+		});
 	});
-	root.querySelectorAll('[data-side-after]').forEach((el) => {
-		const i = +el.dataset.sideAfter;
-		if (changed[i]) el.addEventListener('click', () => openDrawer(changed[i].after, i));
-	});
-}
-
-// Attach drawer-open to every bug card inside a section.
-function bindCompareCards(root, listName, bugs) {
-	root.querySelectorAll('[data-list="' + listName + '"] .bug').forEach((el, j) => {
-		el.addEventListener('click', () => openDrawer(bugs[j], j));
-	});
+	renderPane(root, diff);
 }
 
 // Parse one side completely, then drop its raw bytes before the other side is
