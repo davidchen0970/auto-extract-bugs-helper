@@ -33,7 +33,9 @@ export function applyFilters(bugs) {
 	return bugs.filter((b) => {
 		if (sv !== 'ALL' && b.sev !== sv) return false;
 		if (!q) return true;
-		const hay = [b.cve, b.component, b.type, b.checker, b.category, b.cwe, b.file, b.fn, b.desc, b.key]
+		const hay = [b.cve, b.cveClean, b.component, b.type, b.checker, b.category, b.cwe, b.file, b.fn, b.desc, b.key,
+			b.url, b.project, b.originName, b.match, b.securityRisk, b.fix,
+			...(b.fields ? Object.values(b.fields) : [])]
 			.filter(Boolean).join(' ').toLowerCase();
 		return hay.indexOf(q) >= 0;
 	});
@@ -47,6 +49,7 @@ export function renderTabs() {
 	}
 	const dotColor = (r) => {
 		if (r.type === 'coverity') return 'var(--high)';
+		if (r.type === 'custom') return 'var(--med)';
 		if (r.type === 'blackduck') return 'var(--info)';
 		return 'var(--low)';
 	};

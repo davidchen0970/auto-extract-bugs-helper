@@ -4,6 +4,7 @@
 import { detectReport, looksLikeCoverity, looksLikeBlackDuck } from './detect.js';
 import { parseCoverity } from './coverity.js';
 import { parseBlackDuck } from './blackduck.js';
+import { parseCustomCSV, looksLikeCustomCSV } from './custom.js';
 
 function decode(u8) {
 	try { return new TextDecoder('utf-8').decode(u8); } catch (_) { return ''; }
@@ -47,10 +48,27 @@ export function classifyReports(entries) {
 		} catch (_) { return false; }
 	};
 
+	// Custom source: the column-driven parser for English SCA exports (e.g. Black Duck
+	// SCA) whose headers the Chinese blackduck parser cannot map. It wins over the
+	// others because those exports also trip the lenient looksLikeBlackDuck probe.
+	const pushCustom = (e) => {
+		const csvStr = decode(e.data);
+		if (!looksLikeCustomCSV(csvStr)) return false;
+		try {
+			const p = parseCustomCSV(csvStr);
+			reports.push({ type: 'custom', file: e.name, size: e.size, ...p });
+			return true;
+		} catch (_) { return false; }
+	};
+
 	for (const e of cov) pushCov(e);
-	for (const e of bd) pushBd(e);
+	for (const e of bd) {
+		// A file matched by a *_blackduck* filename may still be the English export;
+		// let the custom parser take precedence when its headers are present.
+		if (!pushCustom(e)) pushBd(e);
+	}
 	for (const e of other) {
-		if (!pushCov(e) && !pushBd(e)) {
+		if (!pushCustom(e) && !pushCov(e) && !pushBd(e)) {
 			artifacts.push({ name: e.name, size: e.size, data: e.data, type: detectReport(e.name) });
 		}
 	}

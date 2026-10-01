@@ -4,6 +4,7 @@ import { state } from './state.js';
 function roleLabel(r) {
 	if (r.type === 'coverity') return 'Coverity 缺陷報表';
 	if (r.type === 'blackduck') return 'BlackDuck 弱點清單';
+	if (r.type === 'custom') return '自定義缺陷來源';
 	if (r.type === 'artifact') return '建置產物';
 	return '其他檔案';
 }

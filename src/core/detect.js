@@ -26,5 +26,5 @@ export function isTarBytes(u8) {
 export function looksLikeBlackDuck(text) {
     if (!/CVE-20\d{2}/.test(String(text).slice(0, 50000))) return false;
     const head = String(text).slice(0, 2000);
-    return /(漏洞編號|CVSS|修復狀態|severity)/i.test(head) || /,(CVE-\d)/.test(head);
+    return /(漏洞編號|修復狀態|severity)/i.test(head) || /,(CVE-\d)/.test(head);
 }

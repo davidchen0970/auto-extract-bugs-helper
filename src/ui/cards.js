@@ -84,17 +84,98 @@ export function bdBody(b) {
 }
 
 export function cveHelpBlock(b) {
-	return cveExtLinks(b.cve);
+	return cveExtLinks(b.cveClean || b.cve);
+}
+
+export function customHead(b, coord) {
+	const fixPill = !b.fix ? '' : (b.fix.indexOf('PATCH') >= 0 ? 'pill ok' : 'pill ignore');
+	const cvss = b.cvss ? `<span class="pill">CVSS ${esc(b.cvss)}</span>` : '';
+	const sec = b.securityRisk ? `<span class="pill">${esc(b.securityRisk)}</span>` : '';
+	const cwePills = (b.cweList || []).map((c) => `<span class="pill">${cweLink(c)}</span>`).join('');
+	return `<div class="bug-sum">
+      <span class="bug-coord">#${coord + 1}</span>
+      <div class="bug-row2">
+        ${sevBadge(b.sev)}
+        <span class="bug-type">${cveLink(b.cveClean || b.cve)}</span>
+        <span class="pill">${esc(b.component)} ${esc(b.version || '')}</span>
+        ${cvss}${sec}${cwePills}
+        ${fixPill ? `<span class="${fixPill}">${esc(b.fix)}</span>` : ''}
+      </div>
+      <div class="bug-loc">${b.component ? esc(b.component) + ' ' + esc(b.version || '') : '—'}</div>
+    </div>`;
+}
+
+// Raw columns that are already surfaced in the curated summary / description above,
+// so the "匯出原始欄位" dump below only shows what isn't repeated elsewhere.
+const CUSTOM_SURFACED = new Set([
+	'Description', 'Component name', 'Component version name', 'Component origin name',
+	'Component origin version name', 'Vulnerability id', 'Vulnerability source',
+	'URL', 'Security Risk', 'Overall score', 'Base score', 'CVSS Version',
+	'CWE Ids', 'Match type', 'Reachable', 'Project path',
+	'Remediation status', 'Status justification',
+	'Published on', 'Updated on',
+]);
+
+function customUrl(v) {
+	return /^https?:\/\//i.test(v)
+		? `<a target="_blank" rel="noopener noreferrer" href="${esc(v)}">${esc(v)}</a>`
+		: esc(v);
+}
+
+export function customBody(b) {
+	const comp = b.component ? esc(b.component) + (b.version ? ' ' + esc(b.version) : '') : '—';
+	const weak = cveLink(b.cveClean || b.cve)
+		+ (b.cve && b.cve !== b.cveClean ? ' <span class="muted">（' + esc(b.cve) + '）</span>' : '');
+	const sev = sevBadge(b.sev)
+		+ (b.securityRisk ? ' · ' + esc(b.securityRisk) : '')
+		+ (b.cvss ? ' · CVSS ' + esc(b.cvss) : '');
+	const meta = [
+		['弱點編號', weak],
+		['元件', comp + (b.originName ? ' <span class="muted">' + esc(b.originName) + '</span>' : '')],
+		['嚴重性', sev],
+		['修復狀態', b.fix + (b.justification ? ' — ' + esc(b.justification) : '')],
+		['發布日期', esc(b.published)],
+		['更新日期', esc(b.updated)],
+		['弱點來源', esc(b.vulnSource)],
+		['CWE', (b.cweList || []).map(cweLink).join('、')],
+		['Project 路徑', b.project || '—'],
+		['配對方式', esc(b.match) + (b.reachable && b.reachable !== 'false' ? ' · 可達=' + esc(b.reachable) : '')],
+	].filter(([, v]) => v && v !== '—')
+		.map(([label, val]) => `<dt>${label}</dt><dd>${val}</dd>`).join('');
+
+	const desc = b.desc ? `<div class="desc-block">${renderMd(b.desc)}</div>` : '';
+
+	let cweNote = '';
+	const what = (b.cweList || []).map((c) => ({ c, w: cweWhat(c) })).filter((x) => x.w)[0];
+	if (what) cweNote = `<div class="kv det-kv"><dt>CWE 說明（${esc(what.c)}）</dt><dd>${renderMd(what.w)}</dd></div>`;
+
+	const extraRows = Object.keys(b.fields || {})
+		.filter((k) => !CUSTOM_SURFACED.has(k))
+		.map((k) => ({ k, v: b.fields[k] }))
+		.filter((f) => f.v);
+	const extra = extraRows.map((f) => `<dt>${esc(f.k)}</dt><dd>${customUrl(f.v)}</dd>`).join('');
+
+	return `<div class="bug-body">
+		${meta ? `<div class="kv det-kv">${meta}</div>` : ''}
+		${desc}
+		${cweNote}
+		${extra ? `<div class="fields-cap">匯出原始欄位（以下 ${extraRows.length} 欄）</div><div class="kv det-kv fields-all">${extra}</div>` : ''}
+		${cveHelpBlock(b)}
+	</div>`;
 }
 
 export function bugCard(b, coord, idx) {
-	const head = b.src === 'blackduck' ? bdHead(b, coord) : covHead(b, coord);
+	const head = b.src === 'blackduck' ? bdHead(b, coord)
+		: b.src === 'custom' ? customHead(b, coord)
+		: covHead(b, coord);
 	return `<div class="bug sev-${b.sev}" data-i="${idx}">${head}</div>`;
 }
 
 export function bugDetail(b, coord) {
-	const head = b.src === 'blackduck' ? bdHead(b, coord) : covHead(b, coord);
-	const body = b.src === 'blackduck' ? bdBody(b) : covBody(b);
+	let head, body;
+	if (b.src === 'blackduck') { head = bdHead(b, coord); body = bdBody(b); }
+	else if (b.src === 'custom') { head = customHead(b, coord); body = customBody(b); }
+	else { head = covHead(b, coord); body = covBody(b); }
 
 	return `<div class="bug sev-${b.sev}">${head}${body}</div>`;
 }
