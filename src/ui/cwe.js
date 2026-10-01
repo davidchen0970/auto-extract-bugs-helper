@@ -4,31 +4,31 @@ import { $ } from './util.js';
 // all eagerly (136 entries total across 25 categories).
 // If it ever grows to hundreds/thousands, switch this to a lazy chunk loader that
 // pulls `data/cwe/<category>.js` on first open instead of importing everything.
-import inputValidation from '../../data/cwe/inputvalidation.js';
-import auth from '../../data/cwe/auth.js';
-import crypto from '../../data/cwe/crypto.js';
-import memory from '../../data/cwe/memory.js';
-import webMisc from '../../data/cwe/web-misc.js';
-import concurrency from '../../data/cwe/concurrency.js';
-import errors from '../../data/cwe/errors.js';
-import logging from '../../data/cwe/logging.js';
-import cryptoExtra from '../../data/cwe/crypto-extra.js';
-import session from '../../data/cwe/session.js';
-import permissions from '../../data/cwe/permissions.js';
-import webInclude from '../../data/cwe/web-include.js';
-import server from '../../data/cwe/server.js';
-import brokenAccessControl from '../../data/cwe/broken-access-control.js';
-import filesPaths from '../../data/cwe/files-paths.js';
-import resourceDos from '../../data/cwe/resource-dos.js';
-import cryptoHardening from '../../data/cwe/crypto-hardening.js';
-import config from '../../data/cwe/config.js';
-import immutable from '../../data/cwe/immutable.js';
-import loggingFail from '../../data/cwe/logging-fail.js';
-import nullC from '../../data/cwe/null-c.js';
-import webInjection from '../../data/cwe/web-injection.js';
-import evalReflect from '../../data/cwe/eval-reflect.js';
-import pathVar from '../../data/cwe/path-var.js';
-import authBypass from '../../data/cwe/auth-bypass.js';
+import inputValidation from '../../data/cwe/web/inputvalidation.js';
+import auth from '../../data/cwe/auth/auth.js';
+import crypto from '../../data/cwe/crypto/crypto.js';
+import memory from '../../data/cwe/native/memory.js';
+import webMisc from '../../data/cwe/web/web-misc.js';
+import concurrency from '../../data/cwe/resilience/concurrency.js';
+import errors from '../../data/cwe/resilience/errors.js';
+import logging from '../../data/cwe/resilience/logging.js';
+import cryptoExtra from '../../data/cwe/crypto/crypto-extra.js';
+import session from '../../data/cwe/auth/session.js';
+import permissions from '../../data/cwe/auth/permissions.js';
+import webInclude from '../../data/cwe/web/web-include.js';
+import server from '../../data/cwe/resilience/server.js';
+import brokenAccessControl from '../../data/cwe/auth/broken-access-control.js';
+import filesPaths from '../../data/cwe/web/files-paths.js';
+import resourceDos from '../../data/cwe/resilience/resource-dos.js';
+import cryptoHardening from '../../data/cwe/crypto/crypto-hardening.js';
+import config from '../../data/cwe/resilience/config.js';
+import immutable from '../../data/cwe/resilience/immutable.js';
+import loggingFail from '../../data/cwe/resilience/logging-fail.js';
+import nullC from '../../data/cwe/native/null-c.js';
+import webInjection from '../../data/cwe/web/web-injection.js';
+import evalReflect from '../../data/cwe/web/eval-reflect.js';
+import pathVar from '../../data/cwe/web/path-var.js';
+import authBypass from '../../data/cwe/auth/auth-bypass.js';
 
 const CHUNKS = [
 	{ category: 'input-validation', entries: inputValidation },
