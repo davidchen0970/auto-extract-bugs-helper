@@ -84,6 +84,59 @@ function codeBlock(label, lang, code) {
 	return box;
 }
 
+// redmine-style rich unified-diff rendering: each line becomes a row with an old/new
+// gutter line number and a colored code cell (green=added, red=removed, blue=hunk).
+function diffBlock(patch) {
+	let oldLine = null;
+	let newLine = null;
+	const pre = el('pre', 'cwe-pre diff-pre');
+	const code = el('code', 'cwe-code-body diff');
+
+	for (const line of String(patch == null ? '' : patch).split('\n')) {
+		let type = 'context';
+		let oldNumber = '';
+		let newNumber = '';
+		const hunk = line.match(/^@@\s+-(\d+)(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@/);
+
+		if (hunk) {
+			type = 'hunk';
+			oldLine = +hunk[1];
+			newLine = +hunk[2];
+		} else if (/^(diff --git|index |--- |\+\+\+ |new file mode|deleted file mode|similarity index|rename (from|to) )/.test(line)) {
+			type = 'meta';
+		} else if (line[0] === '+' && line[1] !== '+') {
+			type = 'added';
+			newNumber = newLine ?? '';
+			if (newLine !== null) newLine++;
+		} else if (line[0] === '-' && line[1] !== '-') {
+			type = 'removed';
+			oldNumber = oldLine ?? '';
+			if (oldLine !== null) oldLine++;
+		} else if (line.startsWith('\\ No newline')) {
+			type = 'notice';
+		} else {
+			oldNumber = oldLine ?? '';
+			newNumber = newLine ?? '';
+			if (oldLine !== null) oldLine++;
+			if (newLine !== null) newLine++;
+		}
+
+		const row = el('span', 'diff-line diff-' + type);
+		row.appendChild(el('span', 'diff-line-number diff-old', oldNumber));
+		row.appendChild(el('span', 'diff-line-number diff-new', newNumber));
+		row.appendChild(el('span', 'diff-code', line || ' '));
+		code.appendChild(row);
+	}
+	pre.appendChild(code);
+
+	const toolbar = el('div', 'diff-toolbar');
+	toolbar.appendChild(el('strong', '', 'unified diff'));
+	const box = el('div', 'cwe-diff diff-preview');
+	box.appendChild(toolbar);
+	box.appendChild(pre);
+	return box;
+}
+
 function buildDetail(e) {
 	const d = el('div', 'cwe-sheet');
 
@@ -102,7 +155,7 @@ function buildDetail(e) {
 	section('(a) 弱點是什麼', el('p', 'cwe-text', e.what));
 	section('(b) 問題長怎樣', codeBlock('壞的寫法', e.lang, e.problem));
 	section('(c) 解完會長怎樣', codeBlock('修好寫法', e.lang, e.fixed));
-	section('(d) 範例 patch', codeBlock('unified diff', 'diff', e.patch));
+	section('(d) 範例 patch', diffBlock(e.patch));
 
 	if (e.refs && e.refs.length) {
 		d.appendChild(el('p', 'cwe-refs', '參考: ' + e.refs.join(' · ')));

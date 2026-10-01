@@ -18,6 +18,21 @@
 	--ok: #2e9e54;
 	--mono: ui-monospace, "SFMono-Regular", Consolas, "Roboto Mono", monospace;
 	--shadow: 0 6px 20px rgba(35, 50, 70, .10);
+	--diff-bg: #ffffff;
+	--diff-border: #d9dfe7;
+	--diff-toolbar-bg: #f3f5f8;
+	--diff-toolbar-color: #55626f;
+	--diff-toolbar-border: #d9dfe7;
+	--diff-gutter-color: #8b97a4;
+	--diff-gutter-border: rgba(35, 50, 70, .12);
+	--diff-added-bg: rgba(46, 158, 84, .14);
+	--diff-added-fg: #1c7a44;
+	--diff-removed-bg: rgba(217, 58, 43, .14);
+	--diff-removed-fg: #b0352a;
+	--diff-hunk-bg: rgba(47, 111, 216, .12);
+	--diff-hunk-fg: #2057a8;
+	--diff-meta-fg: #6d3fb0;
+	--diff-notice-fg: #7a8aa0;
 }
 
 :root[data-theme="dark"] {
@@ -39,4 +54,19 @@
 	--info: #6fb9f5;
 	--ok: #4caf7d;
 	--shadow: 0 6px 24px rgba(0, 0, 0, .35);
+	--diff-bg: #161a21;
+	--diff-border: #2a313c;
+	--diff-toolbar-bg: #1b2028;
+	--diff-toolbar-color: #93a0b1;
+	--diff-toolbar-border: #2a313c;
+	--diff-gutter-color: #6b7787;
+	--diff-gutter-border: rgba(231, 235, 240, .10);
+	--diff-added-bg: rgba(76, 175, 125, .16);
+	--diff-added-fg: #7fd8a5;
+	--diff-removed-bg: rgba(255, 93, 93, .16);
+	--diff-removed-fg: #ffb3ad;
+	--diff-hunk-bg: rgba(111, 185, 245, .14);
+	--diff-hunk-fg: #a6d8ff;
+	--diff-meta-fg: #cdb0f0;
+	--diff-notice-fg: #9db4c5;
 }
