@@ -12,6 +12,9 @@ export function bugKey(b) {
 	if (b.src === 'blackduck') {
 		return 'bd:' + String(b.cve || '').trim();
 	}
+	if (b.src === 'custom') {
+		return 'cust:' + String((b.cveClean || b.cve || '')).trim();
+	}
 	const part = (v) => String(v == null ? '' : v).trim();
 	return 'cov:' + [part(b.file), part(b.line), part(b.type), part(b.checker)].join(SEP);
 }

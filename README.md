@@ -19,8 +19,11 @@ python3 -m http.server 8000     # 或：npm run serve
 | 來源 | 檔案樣式 | 內容 |
 | --- | --- | --- |
 | **Coverity** | `*_coverity_guidance.html` | 靜態分析程式缺陷（類型 / checker / CWE / 檔案行號 / 執行路徑事件）|
-| **BlackDuck** | `*_guidance_details.csv` | 第三方元件 CVE 弱點（嚴重性 / CVSS / 修復狀態 / 官方解法）|
+| **BlackDuck** | `*_guidance_details.csv` | 第三方元件 CVE 弱點（中文欄位表頭）（嚴重性 / CVSS / 修復狀態 / 官方解法）|
+| **自定義缺陷來源** | 英文欄位的 SCA 匯出（如 Black Duck SCA `*.csv`，含 `Component name` / `Vulnerability id` / `Security Risk` / `Overall score` / `CWE Ids` 等）| 以表頭**動態對應**，保留**每一欄原始值**（`fields`），並提升語意欄位（元件 / 版本 / CVE / 嚴重性 / 修復狀態 / CWE / 說明 / URL…）至卡片、搜尋、匯出與比對使用 |
 | 建置產物 | `.ima/.bin/...` | 僅列示大小 |
+
+> 「自定義缺陷來源」特別用來接住表頭是英文、但專案內建中文 Black Duck 解析器對不上的 SCA CSV。此類檔案誤入 Black Duck 解析器時，所有欄位會空白重、嚴重性全被擱成 LOW；自定義解析器會優先在 *blackduck* 之前認領它，並完整保留全部欄位。
 
 ## 功能
 

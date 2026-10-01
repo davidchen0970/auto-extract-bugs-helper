@@ -37,8 +37,8 @@ export function flattenBugs(reports, type) {
 }
 
 // Human-readable labels for the two report types we know how to diff.
-const TYPE_NAME = { coverity: 'Coverity', blackduck: 'BlackDuck' };
-const TYPE_ORDER = ['coverity', 'blackduck'];
+const TYPE_NAME = { coverity: 'Coverity', blackduck: 'BlackDuck', custom: '自定義' };
+const TYPE_ORDER = ['coverity', 'blackduck', 'custom'];
 export function typeName(t) {
 	return TYPE_NAME[t] || String(t);
 }
