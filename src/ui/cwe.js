@@ -1,10 +1,32 @@
 import { $ } from './util.js';
-// PILOT: only one category are loaded. When the full catalog lands, this becomes a
-// chunk loader that pulls `data/cwe/<category>.js` lazily on first open, so the
-// browser never holds all ~944 entries / patches in memory up-front.
+// The handbook now ships several category chunks. Each chunk is a stable
+// `export default [...]` kept in ascending-CWE order, and the browser loads them
+// all eagerly (54 entries today: memory 24, web 6, crypto 6, auth 8, input-validation 10).
+// If it ever grows to hundreds/thousands, switch this to a lazy chunk loader that
+// pulls `data/cwe/<category>.js` on first open instead of importing everything.
 import inputValidation from '../../data/cwe/inputvalidation.js';
+import auth from '../../data/cwe/auth.js';
+import crypto from '../../data/cwe/crypto.js';
+import memory from '../../data/cwe/memory.js';
+import webMisc from '../../data/cwe/web-misc.js';
 
-const CATALOG = inputValidation;
+const CHUNKS = [
+	{ category: 'input-validation', entries: inputValidation },
+	{ category: 'web', entries: webMisc },
+	{ category: 'crypto', entries: crypto },
+	{ category: 'memory · native (C/C++)', entries: memory },
+	{ category: 'auth / identity', entries: auth },
+];
+
+// Flatten all chunks, tag each with its category, and keep the whole handbook
+// sorted by CWE id ascending for a stable "由小到大" handbook order.
+const CATALOG = CHUNKS
+	.flatMap((chunk) => chunk.entries.map((e) => ({ cat: chunk.category, ...e })))
+	.sort((a, b) => {
+		const an = +a.id.replace(/CWE-/, '');
+		const bn = +b.id.replace(/CWE-/, '');
+		return an - bn;
+	});
 
 function el(tag, cls, text) {
 	const n = document.createElement(tag);
@@ -22,14 +44,12 @@ function codeBlock(label, lang, code) {
 	return box;
 }
 
-function renderDetail(e) {
-	const d = $('cwe-detail');
-	d.hidden = false;
-	d.innerHTML = '';
+function buildDetail(e) {
+	const d = el('div', 'cwe-sheet');
 
 	d.appendChild(el('h2', 'cwe-dt-head', e.id + ' — ' + e.name));
 	const meta = el('div', 'cwe-dt-meta');
-	meta.textContent = '語言: ' + (e.lang || '—') + ' · 狀態: ' + (e.status || '');
+	meta.textContent = '類別: ' + (e.cat || '—') + ' · 語言: ' + (e.lang || '—') + ' · 狀態: ' + (e.status || '');
 	d.appendChild(meta);
 
 	const section = (label, node) => {
@@ -47,6 +67,21 @@ function renderDetail(e) {
 	if (e.refs && e.refs.length) {
 		d.appendChild(el('p', 'cwe-refs', '參考: ' + e.refs.join(' · ')));
 	}
+
+	return d;
+}
+
+// CWE 手冊詳情改用側邊 drawer 滑出（沿用缺陷詳情的 drawer）
+function openCweSheet(e) {
+	const db = $('drawer-body');
+	db.innerHTML = '';
+	db.appendChild(buildDetail(e));
+	$('drawer-title').textContent = 'CWE 弱點手冊';
+	$('drawer-copy').hidden = true;
+	$('drawer-download').hidden = true;
+	$('drawer').classList.add('open');
+	$('drawer').setAttribute('aria-hidden', 'false');
+	$('drawer-overlay').classList.add('show');
 }
 
 function renderList() {
@@ -61,13 +96,11 @@ function renderList() {
 
 	const list = $('cwe-list');
 	list.innerHTML = '';
-	const hidden = $('cwe-detail');
-	hidden.hidden = true;
 
 	for (const e of hits) {
 		const b = el('button', 'cwe-entry', e.id + ' — ' + e.name);
-		b.appendChild(el('span', 'cwe-entry-sub', e.lang + ' · ' + e.status));
-		b.addEventListener('click', () => renderDetail(e));
+		b.appendChild(el('span', 'cwe-entry-sub', (e.cat || '') + ' · ' + e.lang + ' · ' + e.status));
+		b.addEventListener('click', () => openCweSheet(e));
 		list.appendChild(b);
 	}
 	if (!hits.length) list.appendChild(el('div', 'empty', '沒有符合的 CWE'));
@@ -77,4 +110,11 @@ export function initCwe() {
 	$('cwe-q').addEventListener('input', renderList);
 	$('cwe-hide-deprecated').addEventListener('change', renderList);
 	renderList();
+}
+
+// 缺陷詳體的「說明」區塊用它展示該 CWE 的「弱點是什麼」解釋；查不到就回 null，由呼叫端退回 b.desc。
+export function cweWhat(id) {
+	if (!id) return null;
+	const hit = CATALOG.find((e) => e.id === String(id));
+	return hit ? hit.what : null;
 }
