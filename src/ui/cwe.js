@@ -1,7 +1,8 @@
 import { $ } from './util.js';
 // The handbook now ships several category chunks. Each chunk is a stable
 // `export default [...]` kept in ascending-CWE order, and the browser loads them
-// all eagerly (54 entries today: memory 24, web 6, crypto 6, auth 8, input-validation 10).
+// all eagerly (72 entries today: memory 24, web 6, crypto 6, auth 8, input-validation 10,
+// concurrency 5, errors 4, logging 4, crypto-extra 5).
 // If it ever grows to hundreds/thousands, switch this to a lazy chunk loader that
 // pulls `data/cwe/<category>.js` on first open instead of importing everything.
 import inputValidation from '../../data/cwe/inputvalidation.js';
@@ -9,6 +10,10 @@ import auth from '../../data/cwe/auth.js';
 import crypto from '../../data/cwe/crypto.js';
 import memory from '../../data/cwe/memory.js';
 import webMisc from '../../data/cwe/web-misc.js';
+import concurrency from '../../data/cwe/concurrency.js';
+import errors from '../../data/cwe/errors.js';
+import logging from '../../data/cwe/logging.js';
+import cryptoExtra from '../../data/cwe/crypto-extra.js';
 
 const CHUNKS = [
 	{ category: 'input-validation', entries: inputValidation },
@@ -16,6 +21,10 @@ const CHUNKS = [
 	{ category: 'crypto', entries: crypto },
 	{ category: 'memory · native (C/C++)', entries: memory },
 	{ category: 'auth / identity', entries: auth },
+	{ category: 'concurrency · race', entries: concurrency },
+	{ category: 'error handling', entries: errors },
+	{ category: 'logging · leak', entries: logging },
+	{ category: 'crypto · randomness', entries: cryptoExtra },
 ];
 
 // Flatten all chunks, tag each with its category, and keep the whole handbook

@@ -6,6 +6,10 @@ import auth from '../data/cwe/auth.js';
 import crypto from '../data/cwe/crypto.js';
 import memory from '../data/cwe/memory.js';
 import webMisc from '../data/cwe/web-misc.js';
+import concurrency from '../data/cwe/concurrency.js';
+import errors from '../data/cwe/errors.js';
+import logging from '../data/cwe/logging.js';
+import cryptoExtra from '../data/cwe/crypto-extra.js';
 
 const CHUNKS = [
 	['input-validation', inputValidation],
@@ -13,6 +17,10 @@ const CHUNKS = [
 	['crypto', crypto],
 	['memory', memory],
 	['auth', auth],
+	['concurrency', concurrency],
+	['errors', errors],
+	['logging', logging],
+	['crypto-extra', cryptoExtra],
 ];
 const REQUIRED = ['id', 'name', 'status', 'what', 'problem', 'fixed', 'patch', 'refs', 'tags'];
 
