@@ -29,14 +29,14 @@ function updateRun() {
 	run.disabled = !(cmp.fileA && cmp.fileB);
 }
 
-function flattenBugs(reports, type) {
+export function flattenBugs(reports, type) {
 	return reports.filter((r) => r.type === type).flatMap((r) => r.bugs || []);
 }
 
 // Human-readable labels for the two report types we know how to diff.
 const TYPE_NAME = { coverity: 'Coverity', blackduck: 'BlackDuck' };
 const TYPE_ORDER = ['coverity', 'blackduck'];
-function typeName(t) {
+export function typeName(t) {
 	return TYPE_NAME[t] || String(t);
 }
 
@@ -45,7 +45,7 @@ function typeName(t) {
 // for the first report that happens to be parsed. bugKey already namespaces its
 // identity by type ('cov:…' vs 'bd:…'), so comparing each type on its own is
 // both correct and cheap.
-function reportTypes(aList, bList) {
+export function reportTypes(aList, bList) {
 	const seen = new Set();
 	for (const r of aList || []) if (r && r.type) seen.add(r.type);
 	for (const r of bList || []) if (r && r.type) seen.add(r.type);
