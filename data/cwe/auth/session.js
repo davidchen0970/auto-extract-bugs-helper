@@ -154,10 +154,13 @@ setInterval(() => db.sessions.deleteMany({ expires_at: { $lt: Date.now() } }), 6
 		name: 'External Control of Critical State Data',
 		lang: 'nodejavascript',
 		status: 'Complete',
-		what: `關鍵狀態資料被外部控制。把決定流程或安全的「狀態」（結帳金額、授權旗標、
-	流程步驟、計費等級）存在使用者可控的地方——明文 cookie、隱藏表單欄位、query——
-	並直接信任它。攻擊者改動這個狀態值（例：把結帳金額改成 1 元、把已完成付款指為 true），
-	伺服器便照單全收、做出錯誤的安全決策。建議做法是狀態一律留在伺服器端（session／DB）保管。`,
+		what: `關鍵狀態資料被外部控制（External Control of Critical State Data）。系統把「跟安全高度相關的使用者狀態或
+	系統自身狀態」放在未授權者可存取的位址——明文 Cookie、隱藏表單欄位、輸入參數、環境變數、資料庫紀錄、
+	設定檔——並直接信任它。既有欄值決定安全決策（結帳金額、授權旗標、流程步驟、計費等級）。只要攻擊者
+	能改動這個值，程式工程師又沒料到它會變，就會照單全收做出錯的安全決策：可借此繞過驗證、抬高權限、
+	把本就敏感的狀態值洩漏給客戶端、或塞進違反預期的值把流程打到當機。修法是讓狀態與敏感資料「只放
+	伺服器端」，由系統自己明確無歧義地追蹤本身與使用者的狀態狀態轉移，不許使用者繞過正當動作直接改；真要在
+	客戶端暫存，就要加密並以 HMAC 這類訊息鑑別碼保證完整，不被竄改。`,
 		problem: `// 不安全寫法：把「是否已付款」與「金額」存在前端可控的 cookie，改值就賴帳
 const cart = JSON.parse(req.cookies.cart || '{}');   // 隱藏表單 / cookie 由用戶掌控
 if (cart.paid === true) {                            // 攻擊者只需把 paid 設成 true
@@ -191,10 +194,12 @@ db.orders.findById(req.body.orderId, (e, order) => {
 		name: 'Reliance on Untrusted Inputs in a Security Decision',
 		lang: 'python',
 		status: 'Complete',
-		what: `安全決策建立在不可信的輸入上。以用戶可以偽造或射入的資料——例如
-	X-Forwarded-For 標頭、隱藏表單欄位、車票欄位——直接當作「是否放行／要不要限速／
-	要信任誰」的依據。攻擊者送出偽造的來源或旗標，就能繞過速率限制、假裝來自白名單 IP。
-	建議做法是安全決策只用伺服器端蒐集並驗證過的資料，若要取真實 IP 就解析可信的代理層。`,
+		what: `在安全決策上依賴不可信的輸入（Reliance on Untrusted Inputs in a Security Decision）。系統的安全性機制
+	正是「建立在某一輸入的存在或其值上」——例如以 X-Forwarded-For 標頭、隱藏表單欄位、Cookie 旗標、來源 IP、
+	或 query 參數來決定要不要放行、要不要限速、要信任誰。開發者常誤以為這類輸入「改不了」，其實攻擊者用自製客戶端或
+	其他手法就能改，而且改了往往不被察覺。把驗證／授權這種安全決策建在它的值上，攻擊者就能繞過整個保護機制：
+	偽造來源或送出過關的旗標即可冒充、抬高權限、外流或竄改敏感資料，甚至讓系統當機或執行任意程式碼。修法是
+	狀態全部留在伺服器端、安全決策不依賴任何送進來的輸入，非存客戶端不可就加密＋HMAC 驗完整性。`,
 		problem: `# 不安全寫法：用前端可隨意偽造的 X-Forwarded-For 當來源決定「要不要限速」
 from flask import request
 

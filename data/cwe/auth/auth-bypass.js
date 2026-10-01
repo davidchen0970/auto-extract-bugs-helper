@@ -13,10 +13,13 @@ export default [
 		name: 'Authentication Bypass Using an Alternate Path',
 		lang: 'nodejavascript',
 		status: 'Complete',
-		what: `使用另一條路徑繞過身分驗證。受保護的動作（例如 DELETE 訂單）明明掛了驗證中介層，
-	不過同一個動作另有一條「旁門左道」的路由忘了套 verify——像是多了個未保護的 GET 對照端點、
-	路徑大小寫歧義、或一個標記成 /internal 卻對外可見的入口。攻擊者只要改走這條替代路徑，
-	就能完全繞過驗證存取關鍵資料。修法是讓受保護的動作只由唯一、且全程掛驗證的端點提供。`,
+		what: `經由另一條路徑或通道繞過身分驗證（Authentication Bypass Using an Alternate Path or Channel）。
+	受保護的動作（例如 DELETE 訂單）明明要求驗證，卻另有一條替代路徑或通道完全不驗證就放行——
+	像是多了個未保護的 GET 對照端點、路徑大小寫歧義、被重導向到的別名 URL、或一個標記成
+	/internal 卻對外可見的入口，甚至是前門程式之外可直接被呼叫的支援程式。攻擊者只要改走這條旁門左道，
+	就能繞過保護機制、以等同受保護功能的權限取得關鍵資料。因為問題出在受保護入口之外還另開了後門，
+	光在主端點補驗證無法治本。修法是讓所有存取都收攏到唯一漏斗（single choke point）通過，
+	每筆請求在抵達資源前都要檢查呼叫者是否確有此權限，任何通道都不允許略過。`,
 		problem: `// 不安全寫法：DELETE 有掛 requireAuth，卻是空包彈——真有動作的是沒上鎖的內建捷徑
 async function requireAuth(req, res, next) {
   if (!req.session || !req.session.uid) return res.sendStatus(401);

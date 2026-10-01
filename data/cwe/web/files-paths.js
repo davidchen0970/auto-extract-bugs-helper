@@ -425,4 +425,80 @@ app.listen(8080);`,
 		refs: ['CWE-552', 'OWASP'],
 		tags: ['exposed-files', 'directory-listing', 'static-root', 'source-exposure', '.env'],
 	},
+	{
+		id: 'CWE-67',
+		name: 'Improper Handling of Windows Device Names',
+		lang: 'nodejavascript',
+		status: 'Complete',
+		what: `Windows 保留裝置名稱(device name)處理不當。程式從使用者輸入建構路徑,卻沒有正確處理、或根
+		本沒處理像 AUX、CON、PRN、COM1、LPT1 這類 Windows 虛擬裝置名稱,把它們當成一般檔案去
+		open／stat／刪除／寫入。這些名稱對應的是特殊裝置而非真正的磁碟檔案;若使用者可控的檔名直接被拼進路徑,
+		攻擊者可藉 URL 注入裝置名稱,引發錯誤頁面或當機(阻斷服務),或讓以設備名稱命名的「檔案」繞過過濾而
+		藏入／暴露惡意內容與敏感資訊。成因是沒針對部署平台的保留名做輸入檢查,而在跨平台移動時把類 Unix 的假定
+		當成通則。修法是先熟悉所在作業系統的保留裝置名清單,在組路徑前就攔下或拒絕這些名稱,再進行任何檔案操作。`,
+		problem: `// 不安全寫法：直接把使用者提供的檔名接進路徑就去存檔，沒擋 AUX/CON/COM1 等保留裝置名
+const fs = require('fs');
+const path = require('path');
+function saveFile(req) {
+  const name = req.body.name;                 // 可為 'con'、'aux'、'lpt1' …
+  const file = path.join(__dirname, 'uploads', name);
+  fs.writeFileSync(file, req.body.data);      // 在 Windows 上會指到裝置而非普通檔案
+}`,
+		fixed: `// 安全寫法：先對保留裝置名稱做拒絕清單，攔下後才准組路徑
+const fs = require('fs');
+const path = require('path');
+const RESERVED = /^(con|prn|aux|nul|com\\d|lpt\\d)(\\..*)?$/i;
+function saveFile(req) {
+  const name = req.body.name;
+  if (RESERVED.test(name)) throw new Error('reserved device name');   // 攔截保留名
+  const file = path.join(__dirname, 'uploads', name);
+  fs.writeFileSync(file, req.body.data);
+}`,
+		patch: `@@
+ function saveFile(req) {
+   const name = req.body.name;
++  if (RESERVED.test(name)) throw new Error('reserved device name');
+   const file = path.join(__dirname, 'uploads', name);
+   fs.writeFileSync(file, req.body.data);`,
+		refs: ['OWASP', 'CWE-67'],
+		tags: ['device-name', 'path', 'dos', 'windows'],
+	},
+	{
+		id: 'CWE-69',
+		name: "Improper Handling of Windows ::DATA Alternate Data Stream",
+		lang: 'nodejavascript',
+		status: 'Complete',
+		what: `Windows 交替資料流(Alternate Data Stream, ADS)存取處理不當。NTFS 的檔案除了主資料流
+		(data fork)外,還可有額外的命名資料流,路徑裡用冒號指定 stream,最常見的是『::$DATA』這個主資料流別名。
+		若程式沒有正確防止或偵測 ADS 的建立／存取,攻擊者可把資訊藏進同一檔案名下的額外 stream,而這個名仍是
+		同一個檔名、文件大小與『dir』等目錄工具不會列出,達到躲藏／隱匿行為;更嚴重的是用『::$DATA』開路徑能
+		繞過預期的存取消控——例如 IIS 對『xxx.asp::$DATA』的請求實際回傳的是檔案本體,把本應禁止下載的原始碼
+		吐出來。成因是只解析『主檔名』卻忽略冒號之後的 stream 部分,於是所有授權／過濾判定都繞開了它。修法是
+		組路徑／取資源前先規範化,明確切分主檔案與 stream,並確保任何 stream 的讀寫都通過同一套授權與釋出檢查。`,
+		problem: `// 不安全寫法：直接拿原始路徑去解析／釋出，沒切掉 '::$DATA' 這類 stream 後綴
+const path = require('path');
+function stat(size, fullPath, allowlisted) {
+  const name = path.basename(fullPath);         // 只顧主檔名，忽略 ':xxx::$DATA'
+  if (!allowlisted.has(name)) throw new Error('denied');
+  return size;                                  // 先用同檔名放行，接著本體就被整包取走
+}`,
+		fixed: `// 安全寫法：先切掉 stream 後綴，用「純主路徑」去做允許清單與釋出
+const path = require('path');
+function stat(size, fullPath, allowlisted) {
+  const cleaned = fullPath.includes(':') ? fullPath.split(':')[0] : fullPath; // 捨棄 :stream
+  const name = path.basename(cleaned);
+  if (!allowlisted.has(name)) throw new Error('denied');
+  return size;
+}`,
+		patch: `@@
+ function stat(size, fullPath, allowlisted) {
+-  const name = path.basename(fullPath);
++  const cleaned = fullPath.includes(':') ? fullPath.split(':')[0] : fullPath;
++  const name = path.basename(cleaned);
+   if (!allowlisted.has(name)) throw new Error('denied');
+   return size;
+ }`,
+		refs: ['OWASP', 'CWE-69'],
+		tags: ['ads', 'stream', 'path', 'source-exposure', 'windows'],
+	},
 ];

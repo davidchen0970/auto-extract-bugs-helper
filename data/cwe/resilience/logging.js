@@ -13,10 +13,13 @@ export default [
 		name: 'Insertion of Sensitive Information into Log File',
 		lang: 'java',
 		status: 'Complete',
-		what: `把敏感資訊寫進日誌檔。登入失敗、交易或例外處理時，開發者常順手把 request 整個參數、
-密碼明文、信用卡號、token 塞進 logger.info／printStackTrace，接著這些資料就永久落在日誌檔案，
-對能讀到日誌的人（含下游彙整、備援、維運）全部曝光。建議做法是只在日誌放可以識別但不敏感的欄位
-（例如訂單編號、使用者 ID），密碼／金鑰／卡號一律遮蔽或完全不記錄。`,
+		what: `把敏感資訊寫進日誌檔。程式直接把使用者敏感資料、完整路徑、系統資訊寫進 log，等於為攻擊者開了一條
+防護較薄弱、更容易取得的獲取資訊管道。登入失敗、交易或例外處理時，開發者常順手把 request 的整個參數、
+密碼明文、信用卡號、token 塞進 logger.info／printStackTrace，甚至連資料庫查詢字串也一併印出（會洩漏表名、
+欄名，反而方便 SQL injection），接著這些資料就永久落在日誌檔案，對能讀到日誌的人——含下游彙整、備援、維運——
+全部曝光。修法是先認真想清楚寫進日誌的資訊有多敏感，絕不把秘密寫進 log；部署到 production 前移除除錯 log、
+把設定從 debug 狀態正確調回正式層級，並保護日誌檔防止未授權讀寫。平常只記可以識別但不敏感的欄位（例如訂單
+編號、使用者 ID），密碼／金鑰／卡號一律遮蔽或完全不記錄。`,
 		problem: `// 不安全寫法：例外時直接把整張 request、密碼一起寫進 log
 @PostMapping("/register")
 public void register(@RequestBody UserReq req) {
@@ -112,10 +115,12 @@ app.post('/api/pay', (req, res) => {
 		name: 'Exposure of Information Through Shell Error Message',
 		lang: 'python',
 		status: 'Complete',
-		what: `把系統資訊透過 Shell（命令列）錯誤訊息外洩出去。呼叫 subprocess／os.system．或操作系統
-在失敗時，常常直接印出完整命令、絕對路徑、環境變數或底層例外堆疊，這些細節能協助攻擊者推敲
-部署結構、套件版本與內部目錄。建議做法是只回傳泛化的错误訊息，明確命令失敗即可，
-把完整診斷內容改寫進伺服器端日誌供維運，不在回應或使用者介面上顯示。`,
+		what: `把系統資訊透過 Shell（命令列）錯誤訊息外洩出去。命令列的錯誤訊息本身就揭示了後端應用程式碼裡存在
+未處理（unhandled）的例外；很多情況下，攻擊者可以善用這些會觸發錯誤的條件，取得對系統的未授權存取。
+呼叫 subprocess／os.system、或作業系統在命令執行失敗時，若直接把完整命令、絕對路徑、環境變數或整段底層例外
+堆疊回傳／顯示出來，這些細節能協助攻擊者推敲部署結構、套件版本與內部目錄，進而設計後續侵入。修法是只對外
+回傳泛化的錯誤訊息、明確告知「命令失敗」即可，把完整的診斷內容改寫進伺服器端日誌供維運查閱，絕不在回應
+或使用者介面上顯示未處理例外與原始的 shell 輸出，阻斷這條不合法的資訊外洩管道。`,
 		problem: `# 不安全寫法：命令失敗時把整段 traceback 與命令內容直接吐給使用者
 import subprocess
 

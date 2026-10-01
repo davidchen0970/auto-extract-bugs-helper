@@ -13,10 +13,12 @@ export default [
 		name: 'Improper Neutralization of Directives in Dynamically Evaluated Code (e.g. Eval Injection)',
 		lang: 'javascript',
 		status: 'Complete',
-		what: `動態程式碼求值注入（eval injection ／ 程式碼注入）。把使用者輸入用字串拼接後直接
-	丟給 eval()、Function() 建構子或字串形式的 setTimeout／setInterval，
-	使用者輸入便會被當成 JavaScript 程式碼執行，等於遠端任意程式碼執行（RCE）。
-	建議做法是徹底避免對使用者輸入求值，改用查表對照的允許清單加上正規 API。`,
+		what: `Dynamically Evaluated Code 注入（eval injection）。程式把使用者輸入用字串拼接後直接丟給
+	eval()、Function() 建構子或字串形態的 setTimeout／setInterval 等動態求值機制，使用者輸入便會被當成對應語言
+	的程式碼執行。成因是求值機制把「輸入」當成「敘述」，字串拼接又讓分隔符、終止子與運算子未受隔離，殘缺的
+	指令骨架也會被補成完整卻有害的程式。後果等同遠端任意程式碼執行（RCE）：竊取 Cookie 與工作階段、讀寫檔案、
+	部署後門，完全控制網頁或伺服器的行為與權限。修法是徹底避免對使用者輸入求值，把操作以查表對照成允許清單內的
+	固定動作，再透過正規 API 執行，無法命中的輸入走明確的失敗分支。`,
 		problem: `// 不安全寫法：把使用者輸入拼成字串直接丟給 eval()，輸入就是程式碼
 function applyFilter(code) {
   // 輸入 e.g. "process.mainModule.require('child_process').exec('id')" 即 RCE
@@ -50,10 +52,12 @@ function applyOp(op, values) {
 		name: 'Use of Externally-Controlled Input to Select Classes or Code (Unsafe Reflection)',
 		lang: 'java',
 		status: 'Complete',
-		what: `不安全反射。用使用者輸入（類別名稱、方法名或命令字）直接決定要反射載入哪個類別、
-	呼叫哪個方法，卻沒有比對允許清單。例如把 request 來的 className 直接交給
-	Class.forName() 再 newInstance()，攻擊者就能載入任意含可利用建構式的類別達成 RCE。
-	建議做法是反射前一定要對輸入做允許清單校驗，只放行預先白名單的類別／命令。`,
+		what: `不安全反射。程式用外部可控的輸入（類別名稱、方法名或命令字串）直接決定要反射載入哪個類別、
+	呼叫哪個方法或實例化哪個物件，卻沒有先比對允許清單。成因是反射 API（Class.forName、getDeclaredMethod、
+	newInstance、invoke 等）以「字串名」去指定「程式碼路徑」，能塞入名稱就等同間接控制程式碼選擇；一旦能指到
+	含可利用建構式、私有或內部實現的類別，就形同載入任意程式碼。後果是遠端任意程式碼執行（RCE）、方法任意呼叫、
+	敏感資料存取乃至整體被接管。修法是反射前對輸入做嚴格而完整的允許清單校驗，以固定常數對應到預先白名單的
+	類別／方法，任何命中不到的輸入直接拒絕，不做隱式回退到有風險的預設。`,
 		problem: `// 不安全寫法：類別名稱由使用者輸入決定，直接反射並實例化，等於任意類別載入
 String className = request.getParameter("className");  // e.g. "org.example.Evil"
 Object instance = Class.forName(className)             // 載入後 new 出來
@@ -85,10 +89,12 @@ Object instance = handler.getDeclaredConstructor().newInstance();`,
 		name: 'Exposed Dangerous Method or Function',
 		lang: 'javascript',
 		status: 'Complete',
-		what: `把危險的方法／功能直接暴露出去。把敏感、內部或足以造成危害的函式（如刪除檔案、
-	執行 shell、重設密碼、內部管理操作）以開放的 API 路由、RPC 或 RMI 介面直接對外，
-	且缺乏權限檢查。攻擊者只要呼叫這個公開端點就能觸發原本該受保護的行為。
-	建議做是行為本身仍要權限控管，並把危險操作包在最小權限的服務端後端，不直接對外。`,
+		what: `將危險的方法／功能直接暴露出去。程式把具破壞性或敏感的操作（刪除檔案、執行 shell、重設權限、
+	改動系統狀態）包成能被外部呼叫的方法或函式，並讓它出現在公開的 API、主控台、RPC 或遠端介面上，卻缺乏權限
+	與呼叫方驗證。成因為把「能被呼叫」與「該由誰呼叫」綁在一起，為共用方便把內部能力原樣接出介面，任何抵達該
+	端點的人都能觸發本該受保護的行為。後果是資料破壞、越權操作與命令執行，進而在多個控制領域之間跨越信任邊界。
+	修法是隔離危險操作到最小權限的服務端後端，對外只暴露受允許且包裝好的動作，並在端點上做嚴格權限與呼叫方驗證，
+	無法授權就明確拒絕。`,
 		problem: `// 不安全寫法：把內部危險函式直接綁到公開路由，任何人都可直接呼叫刪檔
 const methods = {
   // loader.run(args) 內部方法，可能執行 shell / 變更系統狀態
@@ -161,10 +167,11 @@ applySetting(config, req.query.key, req.query.value);`,
 		name: 'Improper Neutralization of Special Elements in Data Query Logic (NoSQL Injection)',
 		lang: 'nodejavascript',
 		status: 'Complete',
-		what: `NoSQL 注入。把使用者輸入用字串拼接直接建 MongoDB 等 NoSQL 查詢，
-	或讓使用者提供的欄位根本就是操作符物件（如 { [field]: { $gt: '' } }），
-	攻擊者就能用 $ne、$gt、$where、/^admin.*$/ 正則改寫查詢邏輯，騙過驗證或列資料。
-	建議做是用參數查詢 API 傳值，並用允許清單限制可被查詢的欄位，拒絕操作符物件。`,
+		what: `NoSQL 注入。程式以字串拼接直接建造 MongoDB 等 NoSQL 查詢，或讓使用者提供的欄位其值本身就是
+	操作符物件（如 { [field]: { $gt: '' } }）。成因是 NoSQL 把「條件」與「操作符」一起當資料傳遞，若不加以區隔，
+	攻擊者可用 $ne、$gt、$or、$where、$regex 或 /^admin.*$/ 改寫查詢邏輯，使條件恆真或改動回傳內容。後果是
+	繞過身分驗證、列舉或竄改整批資料，甚至經由 $where 等機制取得可執行的能力。修法是讓查詢值一律憑參數化／
+	安全的查詢建構 API 傳遞，用允許清單限制可被查詢的欄位並攔掉操作符物件，任何物件型態欄位值都明確失敗。`,
 		problem: `// 不安全寫法：把使用者輸入直接拼進字串查詢，或整包物件當 query 條件
 const col = db.collection('users');
 // 字串拼接：username 可帶 ' || true 改寫整個邏輯

@@ -174,11 +174,13 @@ int main(void) {
 		name: 'Race Condition within a Critical Section',
 		lang: 'go',
 		status: 'Complete',
-		what: `臨界區內的競態。程式雖然在某操作的前後上了鎖，但鎖顆粒度太粗或太細——
-例如把「檢查＋動作」(check-then-act) 這組必須不可分割的步驟拆到鎖的外面，
-或是用兩個不同的鎖各自保護同一個臨界區。結果是「看似有同步」，其實在鎖的間隙
-仍可被另一個執行緒插進來改動共享狀態，讓判斷與使用之間的前提不一致。
-修法是確保整個「讀取─判斷─寫回」序列都落在同一把鎖的保護範圍內。`,
+		what: `臨界區內的競態。兩個執行緒同時使用同一份資源時，若資源在仍處無效、尚未就緒的狀態就被另一邊拿去
+讀寫，執行結果就完全不確定——這種競態最常藏在「看似有鎖」的臨界區內：程式雖然在某操作的前後上了鎖，但鎖
+顆粒度太粗或太細，例如把「檢查＋動作」(check-then-act) 這組必須不可分割的步驟拆到鎖的外面、用兩把不同的鎖
+各自保護同一個臨界區、或讓多個執行緒未經同步機制就直接去搶同一個資源的存取權。一旦鎖被繞過、或另一個執行緒
+從鎖的間隙切入，共享資料就會被改到壞狀態，判斷與使用之間的前提不再一致，最後落在錯誤的執行邏輯與未定義狀態。
+修法是對每個共享資源用機制化的鎖定（mutex）圍住「讀取─判斷─寫回」的臨界區；若該環境沒有天生可用的鎖，就
+用旗標與訊號自行強制阻擋其它執行緒的進入，確保整個必須不可分割的序列都落在同一把鎖的保護範圍內。`,
 		problem: `// 不安全寫法：先解鎖才執行動作，檢查與寫回之間留出空窗 => 臨界區內競態
 package main
 
@@ -889,5 +891,30 @@ void on_event(void) {
  }`,
 		refs: ['CWE-1265', 'CWE-663'],
 		tags: ['reentrancy', 'reentrant', 'nested-call', 'race-condition'],
+	},
+	{
+		id: 'CWE-663',
+		name: 'Use of a Non-reentrant Function in a Concurrent Context',
+		lang: 'c',
+		status: 'Complete',
+		what: `在並行情境呼叫不會重入(non-reentrant)的函式。所謂 non-reentrant 是指函式依賴全域或靜態記憶體、共用緩衝區、區域設定或非執行緒安全的狀態，例如 strtok()、asctime()、rand()、localtime() 這些帶隱藏內部緩衝或全域指標的函式。若在多執行緒同時執行、或在中斷／訊號處理常式裡呼叫它，競爭的另一段程式也會呼叫同一個函式或改動它共享的狀態，導致那份狀態被交錯破壞。後果是資料與記憶體被覆寫、運算結果錯亂甚至任意行為；在訊號處理常式裡尤其危險，可能重入到已被打斷的同一個函式內部。成因是不區分「函式是否帶可共享的可變狀態」就一律直接呼叫。修法是改用重入(reentrant)版本或把狀態改成由呼叫者傳入（如 strtok_r、asctime_r、localtime_r），在訊號／中斷常式裡只呼叫非同步安全的函式，必要時用鎖或執行緒區域變數隔離共享狀態。`,
+		problem: `// 不安全寫法：用內建靜態狀態的函式拆字串，兩個 thread／重入同時呼叫會共享同一份內部狀態而互相覆蓋
+char *first_token(const char *line, char *out) {
+    strcpy(out, line);
+    char *tok = strtok(out, ",");      // strtok 是 non-reentrant：內部共用一份狀態
+    return strdup(tok);                // 別 thread／重入呼叫時內部狀態被竄改 → 解析錯亂
+}`,
+		fixed: `// 安全寫法：改用重入版 strtok_r，把解析位置存在呼叫者自備的 save 指標，狀態各持一份
+char *first_token(const char *line, char *out, char **save) {
+    strcpy(out, line);
+    char *tok = strtok_r(out, ",", save);   // reentrant：狀態在 *save，各呼叫方獨立
+    return strdup(tok);
+}`,
+		patch: `@@
+-    char *tok = strtok(out, ",");
++    char *tok = strtok_r(out, ",", save);
+     return strdup(tok);`,
+		refs: ['OWASP', 'CWE-663'],
+		tags: ['reentrant', 'thread-safety', 'static-state', 'race-condition'],
 	},
 ];

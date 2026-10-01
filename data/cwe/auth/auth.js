@@ -123,9 +123,13 @@ app.get('/api/b', requireRole(['user', 'admin']), (req, res) => sendB(res));`,
 		name: 'Improper Authentication',
 		lang: 'python',
 		status: 'Complete',
-		what: `身分驗證不當。驗證「來的是誰」的機制有漏洞，攻擊者可繞過登入流程或冒充他人身分。
-	最典型的是伺服器把驗證結果放在使用者可控的地方（例如表單欄位、明文 Cookie），
-	然後逕自信任它當作「已登入／是管理員」的依據，實際上並未驗證密碼，也未妥善管理伺服器端工作階段。`,
+		what: `不當身分驗證（Improper Authentication）。當一個角色聲稱自己具有某個身分時，系統沒有證明、
+	或只做了不充分的證明，就採信了這個聲明。常見成因是把驗證結果放在使用者可控的地方——表單欄位、
+	明文 Cookie、可自填的旗標——然後逕自信任它當「已登入／是管理員」的依據，根本沒去比對密碼，
+	或沒妥善管理伺服器端工作階段。攻擊者只需把可控制的旗標改成過關的值，就能繞過整段登入流程、
+	冒充他人身分。輕則外流敏感資料，重則取得更高權限、甚至以受害者身分執行未授權動作。
+	修法是不要自行拼湊弱驗證，改用它人驗證過的身分驗證框架／函式庫（例如 OWASP ESAPI 的
+	驗證功能），並讓身分判定完全落在伺服器端受保護的憑證與工作階段上。`,
 		problem: `# 不安全寫法：逕自信任表單欄位 is_admin，使用者只要送出 1，就可能取得管理員權限
 from flask import Flask, request
 
@@ -183,9 +187,13 @@ def login():
 		name: 'Missing Authentication for Critical Function',
 		lang: 'nodejavascript',
 		status: 'Complete',
-		what: `關鍵功能缺少身分驗證。像是刪除帳號、刷新憑證、管理後台這類高敏感操作，
-	對外開了路由卻沒套任何驗證中介層（middleware），匿名或未登入者可以直接呼叫。
-	建議做法是在這些「臨界功能」前面一律掛上 requireAuth 中介層，先驗證再處理。`,
+		what: `關鍵功能缺少身分驗證（Missing Authentication for Critical Function）。凡是需要「可被證明的使用者身分」、
+	或會耗用大量資源的功能，系統卻完全不驗證就執行——像是刪除帳號、刷新憑證、管理後台、列印機密報表這些
+	高敏感操作，對外開了路由卻沒套任何驗證中介層。常見成因是開發者在主要通道做了驗證，卻另開一條「以為是
+	私密」的次要通道或介面不加防護（登入佔某個埠、驗證後又開第二個埠假設只有已登入者連得到）。攻擊者只要
+	直接走沒上鎖的入口，就能以該功能本身的權限做事——讀改敏感資料、碰管理功能，甚至執行任意程式碼。修法是
+	把系統劃分為匿名／一般／特權／管理區，明確標出哪些區需要已驗證身分並用集中式驗證把關，而且所有可能
+	的通訊通道（包括被誤當私密的那條）都要一一確認受保護；前端做的檢查也務必在伺服器端重複一次。`,
 		problem: `// 不安全寫法：管理類操作路由沒有掛驗證中介層，任何人 POST 就能刪帳號
 const express = require('express');
 const app = express();
@@ -227,9 +235,12 @@ app.delete('/api/account/:id', requireAuth, (req, res) => {
 		name: 'Improper Restriction of Excessive Authentication Attempts',
 		lang: 'nodejavascript',
 		status: 'Complete',
-		what: `未限制過多的驗證嘗試次數。登入介面沒有針對每個 IP／帳號做嘗試計數與鎖定，
-	攻擊者就能無限暴力猜密碼（brute force）。建議做法是統計失敗次數、做速率限制（rate limit），
-	超過上限就鎖定一段時間或加入漸進式延遲。`,
+		what: `未適當限制過多的驗證失敗次數（Improper Restriction of Excessive Authentication Attempts）。
+	登入介面沒有在短時間內防住多次失敗嘗試的手段——不計次數、不鎖定、也不限制速率，同一個 IP／帳號
+	可以無窮無盡地試密碼。常見做法是每次呼叫驗證函式就換一個密碼重試，只要盲猜（brute force）的樣本夠大，
+	總能猜中目標帳號的密碼而取得存取權。只有 time 之後再 sleep 而沒有限制並行連線數，也算沒限住。修法是
+	在短時間內連續失敗即採取多層保護：失敗幾次就中斷連線、實施逾時或鎖定目標帳號一段時間、或要求使用者
+	先完成一道運算題（captcha 類），並搭配經審核的驗證函式庫一次到位。`,
 		problem: `// 不安全寫法：登入迴圈無限重試，每次只比對密碼對不對，不計次數、不延遲
 const login = (user, pwd) => db.getUser(user).then(r => {
   if (!r || r.pwd != pwd) {                    // 密碼比對，還用明文
@@ -322,9 +333,12 @@ app.get('/api/people', async (req, res) => {
 		name: 'Weak Password Requirements',
 		lang: 'nodejavascript',
 		status: 'Complete',
-		what: `密碼需求過弱。註冊或改密碼時只要「非空字串」就收，沒有最小長度、複雜度或禁用常見弱密碼清單，
-	使用者很容易設成 123 / password 這種極易破解的密碼。建議做法是明訂強度規則（長度下限、字元種類），
-	並搭配 zxcvbn-ts 這類「弱密碼預測」來拒絕常見密碼。`,
+		what: `密碼需求過弱（Weak Password Requirements）。系統沒有要求好的、夠強的密碼，註冊或改密碼時
+	只要「非空字串」就收，沒有長度下限、不擋常見弱密碼、也不限定字元組合與禁止重複使用，容易讓使用者
+	設成 123 / password 這類極易猜中的值。功能繁簡可因受保護的系統而異，靠傳統的「定期逼改」收效也有限。
+	後果是攻擊者可輕鬆猜出使用者密碼、取得他人帳號。修法是明訂並落實符合情境的密碼政策：強制最小與最大長度、
+	禁止重複使用舊密碼、禁止用常見密碼、禁止把使用者名稱等已知字串放進密碼；再視需要加入字元組合或較大的
+	最小長度（引導用密碼詞組），並搭配 zxcvbn 這類弱密碼預測在落地端拒收。`,
 		problem: `// 不安全寫法：密碼只要 exists 就收，強度完全沒把關
 async function register(req, res) {
   const { user, password } = req.body;
@@ -361,9 +375,13 @@ async function register(req, res) {
 		name: 'Weak Password Recovery Mechanism for Forgotten Password',
 		lang: 'php',
 		status: 'Complete',
-		what: `密碼遺忘的重設機制太弱。例如用可被猜測的亂數（mt_rand）當重設 token、
-	把新密碼直接寄回信箱、或 token 沒有發行時間與一次性失效。攻擊者可重設別人的帳號。
-	建議做法是產生夠強的 crypto 隨機 token、到期即失效、只存雜湊、且整個流程可以提早失效。`,
+		what: `弱密碼遺忘的重置／還原機制太弱（Weak Password Recovery Mechanism for Forgotten Password）。
+	系統提供「不須知道原密碼就可恢復或更換密碼」的機制，但這套機制本身不牢靠：有的保密問答太好猜、或答案
+	可從社群媒體打聽到；有的在認證前就把新密碼寄到非本人信箱；有的重設次數完全不限流，攻擊者用他人帳號連番
+	觸發重設就能把合法使用者擋在門外（DoS）；還有的直接把「原密碼」原封寄回而非派發一次性新密碼。因為這條路
+	本來就是設計來「無需舊密碼」的旁路，一旦失守，會把再強的密碼驗證也從根上打穿。修法是徹底過濾驗證重設
+	流程的所有輸入、用數題且不可猜的問答、對錯答次數設定節流並達上限就停用、寄新密碼到最首約根地登記的
+	信箱且不給使用者改收件位址、並改派一次性新密碼而不是洩露原密碼。`,
 		problem: `<?php // 不安全寫法：mt_rand() 產生可預測的 token，而且直接寄「明文」重設碼
 $token = mt_rand(100000, 999999);            // 僅 90 萬種可能值，可被暴力窮舉掃過
 $link  = "https://example.com/reset?uid={$uid}&token={$token}";
@@ -395,9 +413,13 @@ mail($email, 'Reset', "https://example.com/reset?token=$token"); // 給的是臨
 		name: 'Use of Hard-coded Credentials',
 		lang: 'python',
 		status: 'Complete',
-		what: `使用硬編碼憑證。把資料庫密碼、API Key、連線字串直接寫死在程式碼裡，
-	進到版本庫就等於外流，也無法輪換（每次都得改程式碼並重新部署）。建議做法是憑證從環境變數、
-	config server 或 secret manager 注入，程式碼裡完全不出現秘密。`,
+		what: `使用硬編碼憑證（Use of Hard-coded Credentials）。產品內建寫死的密碼或加密金鑰，分兩種樣態：
+	「內向式」是驗證機制拿寫死的一組憑證檢查輸入——例如預設管理員帳號配一組每個安裝都一樣、而且不手動改程式
+	就打不掉也不能停用的密碼，管理者還很難察覺；「外向式」是產品要連另一套系統、把連它所需的後端密鑰直接寫死在
+	前端程式。只要有人反組譯出或從程式與 git 歷史挖到這組值，任何知情者都能登入，甚至因所有安裝共用同個密碼、
+	不同組織都通用，更容易被擴散成大規模攻擊（例如蠕蟲）。修法是把憑證移出程式碼：由環境變數、設定伺服器或
+	secret manager 注入並可輪換；必須保留內建值的話，限制能碰到該功能的實體並對外存身分做存取控制、密碼存強
+	單向雜湊加隨機 salt，前後端之間則用須定時變動且受限的憑證。`,
 		problem: `# 不安全寫法：密碼寫死在原始碼，一推上 repo 秘密就外洩
 DB_URL = "postgres://app:SuperS3cret@db.internal:5432/app"
 
@@ -428,9 +450,12 @@ def connect():
 		name: 'Missing Authorization',
 		lang: 'nodejavascript',
 		status: 'Complete',
-		what: `缺少授權檢查。只驗證「有登入」（authenticated），卻沒檢查「這個人有沒有權限做這件事」。
-	於是一般使用者只要直接呼叫路由，就能打管理功能或存取別人的資源。
-	修法是在每個敏感路由都掛上以「角色／擁有權」為依據的授權中介層（authorization/middleware）。`,
+		what: `缺少授權檢查（Missing Authorization）。當一個角色試圖存取資源或執行動作時，系統完全沒有做
+	「他到底有沒有資格做這件事」的授權判定——只驗證了「有登入」（authenticated），卻不管權限。
+	常見成因是把單人其次用途的程式搬到多人環境卻沒補授權、或開發者誤以為標頭／Cookie 這類輸入沒人能改。
+	於是一般使用者只要直接呼叫敏感路由，就能打管理功能、讀別人資源、甚至直接動到未加密保護的資料庫或特權功能，
+	輕則外流、改寫資料，重則取得更高權限、或把資源耗盡造成服務阻斷。修法是依「舉例」把角色與資料、功能仔細
+	對應並用 RBAC 在正確邊界把關，讓授權檢查對準每段業務邏輯，伺服器端每頁都要正確執行、別讓直連頁就能繞過。`,
 		problem: `// 不安全寫法：只確認 req.session.uid 存在（有登入）就放行，沒檢查是不是管理員
 app.get('/api/admin/export', (req, res) => {
   if (!req.session.uid) return res.sendStatus(401);   // 已登入就放行 ???
@@ -476,9 +501,12 @@ app.get('/api/admin/export', requireAdmin, (req, res) => {
 		name: 'Incorrect Authorization',
 		lang: 'nodejavascript',
 		status: 'Complete',
-		what: `授權檢查做錯。授權決策使用了錯誤的依據，例如拿 request body／query 送來的 role 或 url 字串當真、
-	檢查順序寫反、或比對使用者 id 時取錯來源，讓本該沒權限的人被放行。
-	建議做法是授權一律以伺服器端資料（session + DB 記錄）為唯一依據，並確認檢查順序。`,
+		what: `授權檢查做錯（Incorrect Authorization）。角色嘗試存取資源或執行動作時，系統有做授權判定、卻做得不正確，
+	沒有如實擋下該擋的人。常見肇因有：拿使用者可控的輸入當判斷依據（如 request body／query 送來的 role、
+	可偽造的 Cookie、URL 字串）、授權排在解析與正規化之前、或比對擁有者時取錯來源，甚至被篡改的資料
+	直接誤放行。於是本該沒權限的人能繞過原本的限制去讀改敏感資料、取得更高權限，甚或執行未授權的指令。
+	修法是授權一律以伺服器端可靠資料（session＋DB、角色／擁有權）為唯一準據、先正規化再決定、檢查順序
+	確實無誤，並用 RBAC 在正確邊界把關、每頁逐次在伺服器端重驗，配 default-deny 的 ACL。`,
 		problem: `// 不安全寫法：決策拿使用者可控的 body 當依據，自己送 role:"admin" 就被當管理員
 app.delete('/api/order/:id', (req, res) => {
   const granted = req.body.role === 'admin';            // role 是使用者自己填的！

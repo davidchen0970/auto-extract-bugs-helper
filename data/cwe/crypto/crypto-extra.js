@@ -219,11 +219,16 @@ except ssl.SSLCertVerificationError:
 		name: 'Use of Hard-coded Cryptographic Key',
 		lang: 'python',
 		status: 'Complete',
-		what: `使用硬編碼的密碼學金鑰。把 AES 金鑰、HMAC 密鑰或簽章私鑰
-直接寫死在原始碼或設定檔裡，進到版本庫就等於外洩，
-任何人拿到 git 歷史、原始碼或可反組譯的二進位都能抽出金鑰，
-進而解密、偽造或竄改受保護的資料。建議做法是金鑰由 KMS／vault 產生並管理，
-以環境變數或祕密管理服務注入，讓金鑰可以隨時輪換而不需要改程式碼。`,
+		what: `使用硬編碼的密碼學金鑰。把 AES 金鑰、HMAC 密鑰或簽章私鑰直接寫死在
+原始碼或設定檔裡，這種金鑰是「固定不變」的，一旦被抽出就等於永久外洩——
+任何人拿到 git 歷史、原始碼或可反組譯的二進位都能把金鑰取出，進而解密、
+偽造或竄改受保護的資料。官方指出：只要用了硬編碼金鑰，幾乎可以斷言他
+終究會利用到受影響的帳號或機制而把保護繞過，受保護的加密資料被還原的
+機率大幅上升；其影響涵蓋繞過防護機制、取得或冒充他人身分、讀取應用資料，
+在 OT／工業產品中更曾被大量用於關鍵功能而釀成安全事故。建議做法是金鑰由
+KMS／vault 產生並集中管理，以環境變數或祕密管理服務注入，讓金鑰可以隨時
+輪換而不需改程式碼，並確保同一把金鑰不會被複用於多個部署或跟著預設值
+一起散佈到各處。`,
 		problem: `# 不安全寫法：AES-256 金鑰直接寫死在原始碼，一推上 repo 金鑰就外洩
 import os
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -260,11 +265,16 @@ def encrypt_secret(plain: bytes) -> bytes:
 		name: 'Use of Insufficiently Random Values',
 		lang: 'python',
 		status: 'Complete',
-		what: `使用不夠隨機的亂數值。用可預測的亂數來源（例如以時間為種子的
-random 模組）產生 token、session id、nonce 或重設碼，
-序列很短或可被推導，攻擊者可預測下一個「隨機」值，
-進而猜中別人的 session/重設 token。建議做法是改用密碼學安全亂數
-secrets／os.urandom，產生 length 足夠且種子不可推導的值。`,
+		what: `使用不夠隨機的亂數值。在依賴不可預測數值的資安情境（session id、產生
+金鑰時的種子、nonce、重設碼）用了隨機度不足的值：以時間、PID 為種子
+的統計型 PRNG，或取值空間太小、可被推導的數值都算。問題在於電腦本是
+確定性機器，統計型 PRNG 的輸出高度可預測、極易重現同一串數值，拿它
+產生受保護資源的 id 或種子，攻擊者就能猜出別人的 session／金鑰，進而
+繞過身分判定、越權讀取他人資源。常見成因是貪圖省事沿用 non-crypto 的
+random 模組、種子空間太小或種子可被觀察序列回推。建議做法是資安場景
+一律改用密碼學安全亂數（secrets／os.urandom／SecureRandom），採用被公認
+夠強、實作受驗證的演算法與足夠長度的種子（256-bit 起跳），並讓產生器
+在需要時以高品質熵源自行重新播種，確保種子無法由任何可觀察值反推。`,
 		problem: `# 不安全寫法：用 random（Mersenne Twister、種子與時間相關）產生重置金鑰
 import random, string
 
@@ -322,11 +332,16 @@ key = os.urandom(32)   # 256-bit，種子來自 OS 密碼學安全熵池`,
 		name: 'Use of Cryptographically Weak Pseudo-Random Number Generator',
 		lang: 'java',
 		status: 'Complete',
-		what: `使用密碼學上偏弱的擬亂數產生器。java.util.Random 這類線性同餘
-產生器（LCG）雖快，但輸出序列可以從少數觀察值完整回推，
-若拿它產生 IV、key、session id 或 salt，攻擊者可預測後續數值。
-建議做法是密碼學場景一律改用 java.security.SecureRandom，
-它在作業系統層收集真正的熵，輸出不可推導。`,
+		what: `使用密碼學上偏弱的擬亂數產生器。在密碼學情境裡用了一個演算法本身
+不具備密碼學強度的 PRNG，例如 java.util.Random 這類線性同餘產生器
+（LCG）、或 C 的 rand()。這類產生器多是為省運算、不消耗系統有限熵源
+而設計的統計型 PRNG；但正是這些「省資源」的特性會被攻擊者反過來利用——
+輸出序列可以從少數觀察值完整回推，拿它產生 IV、金鑰、session id 或
+salt，即可預測後續數值，讓依賴它的保護機制整組失守：認證、授權、
+身分判定都能被猜測繞過。建議做法是密碼學場景一律改用密碼學安全、最好
+直接由硬體／作業系統熵源供值的產生器（java.security.SecureRandom、
+Windows CryptGenRandom、Linux hw_rand），確保輸出不可推導，而不是拿表面上
+「很快」的統計型 PRNG 充數。`,
 		problem: `// 不安全寫法：用 java.util.Random 產生 AES 的 IV，LCG 可被回推
 import java.util.Random;
 
@@ -485,10 +500,15 @@ ResponseEntity<User> profile(@PathVariable String id) {
 		name: 'Use of GET Request Method With Sensitive Query Strings',
 		lang: 'node',
 		status: 'Complete',
-		what: `用 GET 方法且把敏感資料放進 query string。密碼、token、session id
-等機密若拼進 URL，會完整出現在存取 log、瀏覽器歷史、代理與
-Referer Header，任一方看到 URL 即等於外洩機密。建議做法是把敏感欄位
-改放 HTTP body（POST）或 Authorization Header，query string 只放無機密性的參數。`,
+		what: `用 HTTP 請求且把敏感資料放進 query string。網頁應用在處理請求時，把
+session id、密碼、存取 token、API 金鑰、電子郵件甚至個資等敏感資訊拼到
+query string 裡——最常見是 GET，但 POST／PUT／DELETE 同樣可能帶 query string。
+URL 會被寫進瀏覽器歷史、透過 Referer 傳給第三方網站、被記到 web log 或
+其它日誌來源，任一方只要看到該 URL 就等同取得機密。攻擊者可藉此冒充合法
+使用者、竊取專有資料或執行非開發者預期的操作，而這些洩漏出的資訊還會
+被用來升級攻擊手法。常見成因是直接把敏感參數塞進查詢字串圖方便。建議
+做法是傳送敏感資訊時只放在請求 body 或 header 中，而非 query string，
+必要時乾脆避免 GET 方法。`,
 		problem: `// 不安全寫法：把帳密塞進 GET query string，會烙進 log 歷史與 Referer
 const res = await fetch(
   \`https://api.example.com/login?user=\${user}&password=\${pass}\`

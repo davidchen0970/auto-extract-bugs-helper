@@ -42,10 +42,12 @@ include __DIR__ . '/templates/' . $file;`,
 		name: 'Externally Controlled Reference to a Resource in Another Sphere',
 		lang: 'java',
 		status: 'Complete',
-		what: `外部控制資源參照。程式用使用者提供的名稱／識別字去參照另一信任領域（sphere）內的資源，
-		例如用請求參數直接拼類別名稱做反射 newInstance、或照參數動態選取內部服務方法，卻沒做允許清單，
-		讓外部攻擊者能觸及本不該對外開放的內部程式碼資源。建議做法是用列舉／白名單對應後的固定常數去
-		參照資源，把使用者輸入擋在決策之外，並限制可被反射或呼叫的類別／方法集合。`,
+		what: `外部控制的跨領域資源參照。程式用外部使用者提供的名稱、識別字或鍵去參照另一信任領域（sphere）
+	內的資源——例如把請求參數直接當類別名稱做反射 newInstance、用參數動態挑選內部服務或方法、或以外部鍵存取
+	不該對外開放的檔案／物件。成因為「參考的位址」由外部決定，信任邊界內又沒有允許清單，等於把資源選擇權交給
+	攻擊者。後果是觸發本不該對外開放的內部程式碼、越權存取另一領域的資源，進而演變為 RCE、資訊外洩或身分冒用。
+	修法是用列舉／白名單把使用者輸入先對應成受信任的固定常數再以此參照資源，可反射或可呼叫的類別／方法集合要
+	封閉並受限，無法命中即拒絕。`,
 		problem: `// 不安全寫法：用請求參數當類別名做反射，攻擊者可命名任意類別使其建構
 String className = request.getParameter("handler");
 Object handler = Class.forName(className).getDeclaredConstructor().newInstance(); // 可能指向內部資源`,
