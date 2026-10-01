@@ -6,6 +6,7 @@ import { closeDrawer, currentBug } from './drawer.js';
 import { exportActive, exportBug, copyBug } from './export.js';
 import { toggleTheme, focusSearch } from './theme.js';
 import { bindCompare } from './compare.js';
+import { initCwe } from './cwe.js';
 
 export function bindUI() {
 	const dz = $('dropzone'), fin = $('file-input');
@@ -57,6 +58,7 @@ export function bindUI() {
 	$('drawer-download').addEventListener('click', () => exportBug(currentBug()));
 	$('drawer-overlay').addEventListener('click', closeDrawer);
 	bindCompare();
+	initCwe();
 
 	document.addEventListener('keydown', (e) => {
 		if (e.target && e.target.id === 'q' && (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'PageDown')) {

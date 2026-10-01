@@ -1,0 +1,67 @@
+/* CWE 手冊 tab */
+.cwe-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.cwe-tools { display: flex; gap: 10px; align-items: center; }
+.cwe-search {
+	border: 1px solid var(--border);
+	background: var(--bg2);
+	color: var(--text);
+	padding: 6px 10px;
+	border-radius: 6px;
+	min-width: 220px;
+	font-size: 13px;
+}
+.cwe-filter { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; }
+
+.cwe-list { display: flex; flex-direction: column; gap: 6px; }
+.cwe-entry {
+	text-align: left;
+	border: 1px solid var(--border);
+	background: var(--panel);
+	color: var(--text);
+	padding: 9px 12px;
+	border-radius: 7px;
+	cursor: pointer;
+	font-size: 13px;
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+}
+.cwe-entry:hover { border-color: var(--accent); }
+.cwe-entry-sub { color: var(--muted); font-size: 11px; }
+
+.cwe-detail { margin-top: 18px; border-top: 1px solid var(--border2); padding-top: 14px; }
+.cwe-dt-head { margin: 0 0 4px; }
+.cwe-dt-meta { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+.cwe-sec { margin-bottom: 16px; }
+.cwe-label { margin: 0 0 6px; }
+.cwe-text { margin: 0; line-height: 1.55; }
+.cwe-code { margin: 0 0 6px; }
+.cwe-code-tag {
+	font-size: 11px; color: var(--muted);
+	margin-bottom: 3px;
+}
+.cwe-pre {
+	margin: 0; padding: 10px;
+	background: var(--bg2); border: 1px solid var(--border);
+	border-radius: 7px; overflow-x: auto;
+	font-size: 12px; line-height: 1.5;
+}
+.cwe-code-body { white-space: pre; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.cwe-refs { color: var(--muted); font-size: 12px; margin-top: 14px; }
+
+/* redmine-style rich unified-diff preview (patch) */
+.cwe-diff { margin: 2px 0 10px; border: 1px solid var(--diff-border); border-radius: 9px; overflow: hidden; background: var(--diff-bg); color: var(--text); box-shadow: var(--shadow); }
+.cwe-diff .diff-toolbar { display: flex; align-items: center; min-height: 30px; padding: 0 12px; border-bottom: 1px solid var(--diff-toolbar-border); background: var(--diff-toolbar-bg); color: var(--diff-toolbar-color); font: 700 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.cwe-diff .diff-pre { margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; overflow: auto; }
+.cwe-diff code.diff { display: table; min-width: 100%; font-size: 12px; line-height: 1.55; white-space: pre; }
+.cwe-diff .diff-line { display: table-row; }
+.cwe-diff .diff-line > span { display: table-cell; }
+.cwe-diff .diff-line-number { width: 1%; min-width: 44px; padding: 0 10px; border-right: 1px solid var(--diff-gutter-border); color: var(--diff-gutter-color); text-align: right; user-select: none; }
+.cwe-diff .diff-code { width: 100%; padding: 0 14px 0 2px; }
+.cwe-diff .diff-added { background: var(--diff-added-bg); color: var(--diff-added-fg); }
+.cwe-diff .diff-removed { background: var(--diff-removed-bg); color: var(--diff-removed-fg); }
+.cwe-diff .diff-hunk { background: var(--diff-hunk-bg); color: var(--diff-hunk-fg); }
+.cwe-diff .diff-meta { color: var(--diff-meta-fg); font-weight: 600; }
+.cwe-diff .diff-notice { color: var(--diff-notice-fg); font-style: italic; }
+.cwe-diff .diff-hunk .diff-line-number, .cwe-diff .diff-meta .diff-line-number, .cwe-diff .diff-notice .diff-line-number { color: transparent; }
+.cwe-diff .diff-context { color: var(--text); }

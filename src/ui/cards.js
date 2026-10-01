@@ -1,6 +1,7 @@
 import { esc, cveLink, cweLink, cveExtLinks } from './util.js';
 import { renderMd } from './md.js';
 import { sevLabel } from '../core/index.js';
+import { cweWhat } from './cwe.js';
 
 export function sevBadge(sev) { return `<span class="bug-sev">${sevLabel[sev] || sev}</span>`; }
 
@@ -39,12 +40,12 @@ export function covBody(b) {
 		? `<ol class="events">${b.events.map((e) => `<li><b>${esc(e.tag)}</b> ${esc(e.text)}</li>`).join('')}</ol>`
 		: '');
 	return `<div class="bug-body">
-      <div class="kv">
+      <div class="kv det-kv">
         <dt>位置</dt><dd>${esc(b.file)}${b.line ? ' : <b>' + esc(b.line) + '</b>' : ''}${b.fn ? '（' + esc(b.fn) + '）' : ''}</dd>
         <dt>類型</dt><dd>${esc(b.type)}${b.category ? ' · ' + esc(b.category) : ''}</dd>
         ${b.checker ? `<dt>Checker</dt><dd>${esc(b.checker)}</dd>` : ''}
         ${b.cwe ? `<dt>CWE</dt><dd>${cweLink(b.cwe)}</dd>` : ''}
-        <dt>說明</dt><dd>${renderMd(b.desc || '—')}</dd>
+        <dt>說明</dt><dd>${renderMd(cweWhat(b.cwe) || b.desc || '—')}</dd>
       </div>
       ${events}
       ${covCodeHtml(b.code)}
@@ -70,11 +71,11 @@ export function bdHead(b, coord) {
 
 export function bdBody(b) {
 	return `<div class="bug-body">
-      <div class="kv">
+      <div class="kv det-kv">
         ${b.short ? `<dt>短期建議</dt><dd>${esc(b.short)}</dd>` : ''}
         ${b.long ? `<dt>長期建議</dt><dd>${esc(b.long)}</dd>` : ''}
         ${b.exploit ? `<dt>已知攻擊程式</dt><dd>${esc(b.exploit) === 'N/A' ? '無' : esc(b.exploit)}</dd>` : ''}
-        <dt>說明</dt><dd>${renderMd(b.desc || '—')}</dd>
+        <dt>說明</dt><dd>${renderMd(cweWhat(b.cwe) || b.desc || '—')}</dd>
         ${b.official ? `<dt>官方解法</dt><dd>${renderMd(b.official)}</dd>` : ''}
         ${b.workaround ? `<dt>暫時規避</dt><dd>${esc(b.workaround)}</dd>` : ''}
       </div>
@@ -92,5 +93,8 @@ export function bugCard(b, coord, idx) {
 }
 
 export function bugDetail(b, coord) {
-	return `<div class="bug sev-${b.sev}">${(b.src === 'blackduck' ? bdHead(b, coord) : covHead(b, coord))}${(b.src === 'blackduck' ? bdBody(b) : covBody(b))}</div>`;
+	const head = b.src === 'blackduck' ? bdHead(b, coord) : covHead(b, coord);
+	const body = b.src === 'blackduck' ? bdBody(b) : covBody(b);
+
+	return `<div class="bug sev-${b.sev}">${head}${body}</div>`;
 }
