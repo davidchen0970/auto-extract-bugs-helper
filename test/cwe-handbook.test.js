@@ -22,6 +22,10 @@ import config from '../data/cwe/config.js';
 import immutable from '../data/cwe/immutable.js';
 import loggingFail from '../data/cwe/logging-fail.js';
 import nullC from '../data/cwe/null-c.js';
+import webInjection from '../data/cwe/web-injection.js';
+import evalReflect from '../data/cwe/eval-reflect.js';
+import pathVar from '../data/cwe/path-var.js';
+import authBypass from '../data/cwe/auth-bypass.js';
 
 const CHUNKS = [
 	['input-validation', inputValidation],
@@ -45,6 +49,10 @@ const CHUNKS = [
 	['immutable', immutable],
 	['logging-fail', loggingFail],
 	['null-c', nullC],
+	['web-injection', webInjection],
+	['eval-reflect', evalReflect],
+	['path-var', pathVar],
+	['auth-bypass', authBypass],
 ];
 const REQUIRED = ['id', 'name', 'status', 'what', 'problem', 'fixed', 'patch', 'refs', 'tags'];
 

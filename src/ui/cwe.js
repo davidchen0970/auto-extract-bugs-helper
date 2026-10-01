@@ -1,7 +1,7 @@
 import { $ } from './util.js';
 // The handbook now ships several category chunks. Each chunk is a stable
 // `export default [...]` kept in ascending-CWE order, and the browser loads them
-// all eagerly (120 entries total across 21 categories).
+// all eagerly (136 entries total across 25 categories).
 // If it ever grows to hundreds/thousands, switch this to a lazy chunk loader that
 // pulls `data/cwe/<category>.js` on first open instead of importing everything.
 import inputValidation from '../../data/cwe/inputvalidation.js';
@@ -25,6 +25,10 @@ import config from '../../data/cwe/config.js';
 import immutable from '../../data/cwe/immutable.js';
 import loggingFail from '../../data/cwe/logging-fail.js';
 import nullC from '../../data/cwe/null-c.js';
+import webInjection from '../../data/cwe/web-injection.js';
+import evalReflect from '../../data/cwe/eval-reflect.js';
+import pathVar from '../../data/cwe/path-var.js';
+import authBypass from '../../data/cwe/auth-bypass.js';
 
 const CHUNKS = [
 	{ category: 'input-validation', entries: inputValidation },
@@ -48,6 +52,10 @@ const CHUNKS = [
 	{ category: 'assumed-immutable', entries: immutable },
 	{ category: 'logging · fail (injection/monitor)', entries: loggingFail },
 	{ category: 'C/C++ · null & init', entries: nullC },
+	{ category: 'web · xss-server & xml', entries: webInjection },
+	{ category: 'eval · reflection & nosql', entries: evalReflect },
+	{ category: 'path traversal variants', entries: pathVar },
+	{ category: 'auth bypass · trust', entries: authBypass },
 ];
 
 // Flatten all chunks, tag each with its category, and keep the whole handbook
