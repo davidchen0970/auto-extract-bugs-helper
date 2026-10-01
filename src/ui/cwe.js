@@ -1,34 +1,51 @@
 import { $ } from './util.js';
-// The handbook now ships several category chunks. Each chunk is a stable
+// The handbook now ships a lot of category chunks. Each chunk is a stable
 // `export default [...]` kept in ascending-CWE order, and the browser loads them
-// all eagerly (136 entries total across 25 categories).
+// all eagerly (a few hundred Base/Variant entries across the themed categories
+// plus the v4.20 gap-fill batches).
 // If it ever grows to hundreds/thousands, switch this to a lazy chunk loader that
 // pulls `data/cwe/<category>.js` on first open instead of importing everything.
-import inputValidation from '../../data/cwe/web/inputvalidation.js';
-import auth from '../../data/cwe/auth/auth.js';
-import crypto from '../../data/cwe/crypto/crypto.js';
-import memory from '../../data/cwe/native/memory.js';
-import webMisc from '../../data/cwe/web/web-misc.js';
-import concurrency from '../../data/cwe/resilience/concurrency.js';
-import errors from '../../data/cwe/resilience/errors.js';
-import logging from '../../data/cwe/resilience/logging.js';
-import cryptoExtra from '../../data/cwe/crypto/crypto-extra.js';
-import session from '../../data/cwe/auth/session.js';
-import permissions from '../../data/cwe/auth/permissions.js';
-import webInclude from '../../data/cwe/web/web-include.js';
-import server from '../../data/cwe/resilience/server.js';
-import brokenAccessControl from '../../data/cwe/auth/broken-access-control.js';
-import filesPaths from '../../data/cwe/web/files-paths.js';
-import resourceDos from '../../data/cwe/resilience/resource-dos.js';
-import cryptoHardening from '../../data/cwe/crypto/crypto-hardening.js';
-import config from '../../data/cwe/resilience/config.js';
-import immutable from '../../data/cwe/resilience/immutable.js';
-import loggingFail from '../../data/cwe/resilience/logging-fail.js';
-import nullC from '../../data/cwe/native/null-c.js';
-import webInjection from '../../data/cwe/web/web-injection.js';
-import evalReflect from '../../data/cwe/web/eval-reflect.js';
-import pathVar from '../../data/cwe/web/path-var.js';
 import authBypass from '../../data/cwe/auth/auth-bypass.js';
+import auth from '../../data/cwe/auth/auth.js';
+import brokenAccessControl from '../../data/cwe/auth/broken-access-control.js';
+import concurrency from '../../data/cwe/resilience/concurrency.js';
+import config from '../../data/cwe/resilience/config.js';
+import cryptoExtra from '../../data/cwe/crypto/crypto-extra.js';
+import cryptoHardening from '../../data/cwe/crypto/crypto-hardening.js';
+import crypto from '../../data/cwe/crypto/crypto.js';
+import errors from '../../data/cwe/resilience/errors.js';
+import evalReflect from '../../data/cwe/web/eval-reflect.js';
+import filesPaths from '../../data/cwe/web/files-paths.js';
+import immutable from '../../data/cwe/resilience/immutable.js';
+import inputValidation from '../../data/cwe/web/inputvalidation.js';
+import logging from '../../data/cwe/resilience/logging.js';
+import loggingFail from '../../data/cwe/resilience/logging-fail.js';
+import memory from '../../data/cwe/native/memory.js';
+import nullC from '../../data/cwe/native/null-c.js';
+import pathVar from '../../data/cwe/web/path-var.js';
+import permissions from '../../data/cwe/auth/permissions.js';
+import resourceDos from '../../data/cwe/resilience/resource-dos.js';
+import server from '../../data/cwe/resilience/server.js';
+import session from '../../data/cwe/auth/session.js';
+import webInclude from '../../data/cwe/web/web-include.js';
+import webInjection from '../../data/cwe/web/web-injection.js';
+import webMisc from '../../data/cwe/web/web-misc.js';
+import gap01 from '../../data/cwe/expansion/gap-01.js';
+import gap02 from '../../data/cwe/expansion/gap-02.js';
+import gap03 from '../../data/cwe/expansion/gap-03.js';
+import gap04 from '../../data/cwe/expansion/gap-04.js';
+import gap05 from '../../data/cwe/expansion/gap-05.js';
+import gap06 from '../../data/cwe/expansion/gap-06.js';
+import gap07 from '../../data/cwe/expansion/gap-07.js';
+import gap08 from '../../data/cwe/expansion/gap-08.js';
+import gap09 from '../../data/cwe/expansion/gap-09.js';
+import gap10 from '../../data/cwe/expansion/gap-10.js';
+import gap11 from '../../data/cwe/expansion/gap-11.js';
+import gap12 from '../../data/cwe/expansion/gap-12.js';
+import gap13 from '../../data/cwe/expansion/gap-13.js';
+import gap14 from '../../data/cwe/expansion/gap-14.js';
+import gap15 from '../../data/cwe/expansion/gap-15.js';
+import gap16 from '../../data/cwe/expansion/gap-16.js';
 
 const CHUNKS = [
 	{ category: 'input-validation', entries: inputValidation },
@@ -56,6 +73,22 @@ const CHUNKS = [
 	{ category: 'eval · reflection & nosql', entries: evalReflect },
 	{ category: 'path traversal variants', entries: pathVar },
 	{ category: 'auth bypass · trust', entries: authBypass },
+	{ category: '補齊·組態/路徑 (CWE 5–56)', entries: gap01 },
+	{ category: '補齊·路徑等價/注入 (CWE 57–151)', entries: gap02 },
+	{ category: '補齊·中性化/編碼/轉型 (CWE 152–218)', entries: gap03 },
+	{ category: '補齊·敏感資料/日誌/密碼/權限 (CWE 219–299)', entries: gap04 },
+	{ category: '補齊·認證/密碼學/隨機數 (CWE 301–383)', entries: gap05 },
+	{ category: '補齊·符號/邏輯/通道/例外 (CWE 386–483)', entries: gap06 },
+	{ category: '補齊·敏感資訊/可寫性/惡意碼 (CWE 484–542)', entries: gap07 },
+	{ category: '補齊·組態/資訊暴露/物件模型 (CWE 543–596)', entries: gap08 },
+	{ category: '補齊·輸入驗證/認證/API (CWE 597–694)', entries: gap09 },
+	{ category: '補齊·低階/記憶體/並行 (CWE 695–832)', entries: gap10 },
+	{ category: '補齊·驗證/Android/通訊/Web (CWE 836–1056)', entries: gap11 },
+	{ category: '補齊·程式碼/資料品質 (CWE 1057–1100)', entries: gap12 },
+	{ category: '補齊·程式碼品質/文件/硬體 (CWE 1101–1221)', entries: gap13 },
+	{ category: '補齊·硬體/韌體/密碼 (CWE 1222–1269)', entries: gap14 },
+	{ category: '補齊·硬體/SoC/輸入驗證 (CWE 1270–1318)', entries: gap15 },
+	{ category: '補齊·硬體/嵌入式/SoC/AI (CWE 1319–1434)', entries: gap16 },
 ];
 
 // Flatten all chunks, tag each with its category, and keep the whole handbook
