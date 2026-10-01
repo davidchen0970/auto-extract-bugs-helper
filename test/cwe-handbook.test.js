@@ -10,6 +10,10 @@ import concurrency from '../data/cwe/concurrency.js';
 import errors from '../data/cwe/errors.js';
 import logging from '../data/cwe/logging.js';
 import cryptoExtra from '../data/cwe/crypto-extra.js';
+import session from '../data/cwe/session.js';
+import permissions from '../data/cwe/permissions.js';
+import webInclude from '../data/cwe/web-include.js';
+import server from '../data/cwe/server.js';
 
 const CHUNKS = [
 	['input-validation', inputValidation],
@@ -21,6 +25,10 @@ const CHUNKS = [
 	['errors', errors],
 	['logging', logging],
 	['crypto-extra', cryptoExtra],
+	['session', session],
+	['permissions', permissions],
+	['web-include', webInclude],
+	['server', server],
 ];
 const REQUIRED = ['id', 'name', 'status', 'what', 'problem', 'fixed', 'patch', 'refs', 'tags'];
 

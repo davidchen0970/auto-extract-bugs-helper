@@ -1,8 +1,7 @@
 import { $ } from './util.js';
 // The handbook now ships several category chunks. Each chunk is a stable
 // `export default [...]` kept in ascending-CWE order, and the browser loads them
-// all eagerly (72 entries today: memory 24, web 6, crypto 6, auth 8, input-validation 10,
-// concurrency 5, errors 4, logging 4, crypto-extra 5).
+// all eagerly (90 entries total across 13 categories).
 // If it ever grows to hundreds/thousands, switch this to a lazy chunk loader that
 // pulls `data/cwe/<category>.js` on first open instead of importing everything.
 import inputValidation from '../../data/cwe/inputvalidation.js';
@@ -14,6 +13,10 @@ import concurrency from '../../data/cwe/concurrency.js';
 import errors from '../../data/cwe/errors.js';
 import logging from '../../data/cwe/logging.js';
 import cryptoExtra from '../../data/cwe/crypto-extra.js';
+import session from '../../data/cwe/session.js';
+import permissions from '../../data/cwe/permissions.js';
+import webInclude from '../../data/cwe/web-include.js';
+import server from '../../data/cwe/server.js';
 
 const CHUNKS = [
 	{ category: 'input-validation', entries: inputValidation },
@@ -25,6 +28,10 @@ const CHUNKS = [
 	{ category: 'error handling', entries: errors },
 	{ category: 'logging · leak', entries: logging },
 	{ category: 'crypto · randomness', entries: cryptoExtra },
+	{ category: 'session · state', entries: session },
+	{ category: 'permissions · privileges', entries: permissions },
+	{ category: 'web · include & assign', entries: webInclude },
+	{ category: 'server · robustness', entries: server },
 ];
 
 // Flatten all chunks, tag each with its category, and keep the whole handbook
