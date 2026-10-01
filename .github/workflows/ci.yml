@@ -26,10 +26,30 @@ jobs:
           find . -path ./.git -prune -o -name '*.js' -print0 \
             | xargs -0 -n1 node --check
 
+  lint:
+    name: indentation check (tabs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dev dependencies when a lockfile is present
+        run: |
+          if [ -f package-lock.json ] || [ -f package.json ]; then
+            if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          fi
+
+      - name: Enforce tab indentation in first-party source
+        run: |
+          node scripts/tabcheck.mjs
+
   test:
     name: run tests (node 24)
     runs-on: ubuntu-latest
-    needs: syntax
+    needs: [syntax, lint]
     steps:
       - uses: actions/checkout@v4
 
