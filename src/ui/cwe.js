@@ -1,7 +1,7 @@
 import { $ } from './util.js';
 // The handbook now ships several category chunks. Each chunk is a stable
 // `export default [...]` kept in ascending-CWE order, and the browser loads them
-// all eagerly (104 entries total across 17 categories).
+// all eagerly (120 entries total across 21 categories).
 // If it ever grows to hundreds/thousands, switch this to a lazy chunk loader that
 // pulls `data/cwe/<category>.js` on first open instead of importing everything.
 import inputValidation from '../../data/cwe/inputvalidation.js';
@@ -21,6 +21,10 @@ import brokenAccessControl from '../../data/cwe/broken-access-control.js';
 import filesPaths from '../../data/cwe/files-paths.js';
 import resourceDos from '../../data/cwe/resource-dos.js';
 import cryptoHardening from '../../data/cwe/crypto-hardening.js';
+import config from '../../data/cwe/config.js';
+import immutable from '../../data/cwe/immutable.js';
+import loggingFail from '../../data/cwe/logging-fail.js';
+import nullC from '../../data/cwe/null-c.js';
 
 const CHUNKS = [
 	{ category: 'input-validation', entries: inputValidation },
@@ -40,6 +44,10 @@ const CHUNKS = [
 	{ category: 'files · paths', entries: filesPaths },
 	{ category: 'resource · dos', entries: resourceDos },
 	{ category: 'crypto · hardening', entries: cryptoHardening },
+	{ category: 'config · defaults', entries: config },
+	{ category: 'assumed-immutable', entries: immutable },
+	{ category: 'logging · fail (injection/monitor)', entries: loggingFail },
+	{ category: 'C/C++ · null & init', entries: nullC },
 ];
 
 // Flatten all chunks, tag each with its category, and keep the whole handbook

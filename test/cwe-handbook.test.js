@@ -18,6 +18,10 @@ import brokenAccessControl from '../data/cwe/broken-access-control.js';
 import filesPaths from '../data/cwe/files-paths.js';
 import resourceDos from '../data/cwe/resource-dos.js';
 import cryptoHardening from '../data/cwe/crypto-hardening.js';
+import config from '../data/cwe/config.js';
+import immutable from '../data/cwe/immutable.js';
+import loggingFail from '../data/cwe/logging-fail.js';
+import nullC from '../data/cwe/null-c.js';
 
 const CHUNKS = [
 	['input-validation', inputValidation],
@@ -37,6 +41,10 @@ const CHUNKS = [
 	['files-paths', filesPaths],
 	['resource-dos', resourceDos],
 	['crypto-hardening', cryptoHardening],
+	['config', config],
+	['immutable', immutable],
+	['logging-fail', loggingFail],
+	['null-c', nullC],
 ];
 const REQUIRED = ['id', 'name', 'status', 'what', 'problem', 'fixed', 'patch', 'refs', 'tags'];
 
