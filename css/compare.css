@@ -100,6 +100,33 @@
 	color: var(--muted);
 	margin-bottom: 4px;
 }
+/* Each report type (Coverity / BlackDuck) gets its own block with a heading. */
+.cmp-block { margin-bottom: 26px; }
+.cmp-type-title {
+	font-size: 15px;
+	margin: 0 0 10px;
+	padding: 6px 10px;
+	border-left: 3px solid var(--accent);
+	background: var(--bg2);
+	border-radius: 0 6px 6px 0;
+}
+/* One bookmark tab per report type; only the active type's cards are in the DOM. */
+.cmp-tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.cmp-tab {
+	border: 1px solid var(--border);
+	background: var(--bg2);
+	color: var(--muted);
+	padding: 7px 16px;
+	border-radius: 999px;
+	cursor: pointer;
+	font-size: 13px;
+}
+.cmp-tab.active {
+	background: var(--panel);
+	color: var(--accent);
+	font-weight: 600;
+	border-color: var(--border2);
+}
 
 @media (max-width: 720px) {
 	.compare-slots, .cmp-summary, .cmp-split { grid-template-columns: 1fr; }
