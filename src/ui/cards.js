@@ -45,7 +45,7 @@ export function covBody(b) {
         <dt>類型</dt><dd>${esc(b.type)}${b.category ? ' · ' + esc(b.category) : ''}</dd>
         ${b.checker ? `<dt>Checker</dt><dd>${esc(b.checker)}</dd>` : ''}
         ${b.cwe ? `<dt>CWE</dt><dd>${cweLink(b.cwe)}</dd>` : ''}
-        <dt>說明</dt><dd>${renderMd(cweWhat(b.cwe) || b.desc || '—')}</dd>
+        <dt>CWE 說明</dt><dd>${renderMd(cweWhat(b.cwe) || b.desc || '—')}</dd>
       </div>
       ${events}
       ${covCodeHtml(b.code)}
@@ -75,7 +75,7 @@ export function bdBody(b) {
         ${b.short ? `<dt>短期建議</dt><dd>${esc(b.short)}</dd>` : ''}
         ${b.long ? `<dt>長期建議</dt><dd>${esc(b.long)}</dd>` : ''}
         ${b.exploit ? `<dt>已知攻擊程式</dt><dd>${esc(b.exploit) === 'N/A' ? '無' : esc(b.exploit)}</dd>` : ''}
-        <dt>說明</dt><dd>${renderMd(cweWhat(b.cwe) || b.desc || '—')}</dd>
+        <dt>CWE 說明</dt><dd>${renderMd(cweWhat(b.cwe) || b.desc || '—')}</dd>
         ${b.official ? `<dt>官方解法</dt><dd>${renderMd(b.official)}</dd>` : ''}
         ${b.workaround ? `<dt>暫時規避</dt><dd>${esc(b.workaround)}</dd>` : ''}
       </div>
