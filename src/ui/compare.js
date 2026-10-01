@@ -33,7 +33,27 @@ function flattenBugs(reports, type) {
 	return reports.filter((r) => r.type === type).flatMap((r) => r.bugs || []);
 }
 
-function renderResults(diff) {
+// Human-readable labels for the two report types we know how to diff.
+const TYPE_NAME = { coverity: 'Coverity', blackduck: 'BlackDuck' };
+const TYPE_ORDER = ['coverity', 'blackduck'];
+function typeName(t) {
+	return TYPE_NAME[t] || String(t);
+}
+
+// The set of report types present across both archives. A tarball / folder often
+// mixes Coverity AND BlackDuck reports; the diff must run for each type, not just
+// for the first report that happens to be parsed. bugKey already namespaces its
+// identity by type ('cov:…' vs 'bd:…'), so comparing each type on its own is
+// both correct and cheap.
+function reportTypes(aList, bList) {
+	const seen = new Set();
+	for (const r of aList || []) if (r && r.type) seen.add(r.type);
+	for (const r of bList || []) if (r && r.type) seen.add(r.type);
+	return TYPE_ORDER.filter((t) => seen.has(t)).concat([...seen].filter((t) => !TYPE_ORDER.includes(t)));
+}
+
+// HTML for one report type's summary + added/removed/changed sections.
+function blockHtml(diff) {
 	const added = diff.added || [];
 	const removed = diff.removed || [];
 	const changed = diff.changed || [];
@@ -62,10 +82,7 @@ function renderResults(diff) {
 			'</div></div>')
 		: '<div class="empty">無內容差異</div>';
 
-	const wrap = $('compare-results');
-	wrap.hidden = false;
-	wrap.innerHTML =
-		'<div class="cmp-summary">' +
+	return '<div class="cmp-summary">' +
 		'<div class="card cmp-card"><div class="card-n" style="color:var(--high)">' + fmt(added.length) + '</div><div class="card-l">新增</div></div>' +
 		'<div class="card cmp-card"><div class="card-n" style="color:var(--ok)">' + fmt(removed.length) + '</div><div class="card-l">移除</div></div>' +
 		'<div class="card cmp-card"><div class="card-n" style="color:var(--info)">' + fmt(changed.length) + '</div><div class="card-l">內容差異</div></div>' +
@@ -74,14 +91,65 @@ function renderResults(diff) {
 		'<div class="cmp-section" data-list="added"><h3>新增 <span class="muted">僅存在於報表 B，點擊看詳細</span></h3><div class="cmp-group">' + addedHtml + '</div></div>' +
 		'<div class="cmp-section" data-list="removed"><h3>移除 <span class="muted">僅存在於報表 A（基準），點擊看詳細</span></h3><div class="cmp-group">' + removedHtml + '</div></div>' +
 		'<div class="cmp-section"><h3>內容差異 <span class="muted">兩邊都有但內容改變</span></h3><div class="cmp-group">' + changedHtml + '</div></div>';
+}
 
-	bindCompareCards(wrap, 'added', added);
-	bindCompareCards(wrap, 'removed', removed);
-	wrap.querySelectorAll('[data-side-before]').forEach((el) => {
+// Render the diff results as BOOKMARK TABS — one tab per report type present in
+// the archives. Only the active type's defect cards are ever in the DOM; switching
+// tabs lazily renders that type on demand. That keeps the results page short and
+// bounds peak memory even when a tarball holds both Coverity and BlackDuck with
+// hundreds of defects each.
+function renderResults(results) {
+	const wrap = $('compare-results');
+	wrap.hidden = false;
+
+	if (!results || !results.length) {
+		wrap.innerHTML = '<div class="empty">兩份檔案內都沒有可辨識的報表</div>';
+		return;
+	}
+
+	// (btnIdx === i) so the first type is pre-selected; data-cmp-tab carries the
+	// index into `results`, which renderType() resolves.
+	const tabs = results.map((_r, i) =>
+		'<button type="button" class="cmp-tab' + (i === 0 ? ' active' : '') + '" data-cmp-tab="' + i + '">' +
+		typeName(results[i].type) +
+		'</button>'
+	).join('');
+
+	wrap.innerHTML = '<div class="cmp-tabs">' + tabs + '</div><div class="cmp-pane"></div>';
+
+	renderType(results, 0);
+
+	wrap.querySelectorAll('.cmp-tab').forEach((btn) => {
+		btn.addEventListener('click', () => renderType(results, +btn.dataset.cmpTab));
+	});
+}
+
+// Swap the pane to a single report type (available lazily on tab switch, so the
+// other types' DOM is freed as soon as the block is replaced).
+function renderType(results, idx) {
+	const wrap = $('compare-results');
+	const pane = wrap.querySelector('.cmp-pane');
+	if (!pane || !results[idx]) return;
+
+	const { type, diff } = results[idx];
+	pane.innerHTML = '<div class="cmp-block"><h3 class="cmp-type-title">' + typeName(type) + '</h3>' + blockHtml(diff) + '</div>';
+	bindBlock(pane.querySelector('.cmp-block'), diff);
+
+	wrap.querySelectorAll('.cmp-tab').forEach((b) => b.classList.toggle('active', +b.dataset.cmpTab === idx));
+}
+
+// Wire a single report-type block: drawer on added / removed cards and on each
+// side of a changed bug.
+function bindBlock(root, diff) {
+	if (!root) return;
+	const changed = diff.changed || [];
+	bindCompareCards(root, 'added', diff.added || []);
+	bindCompareCards(root, 'removed', diff.removed || []);
+	root.querySelectorAll('[data-side-before]').forEach((el) => {
 		const i = +el.dataset.sideBefore;
 		if (changed[i]) el.addEventListener('click', () => openDrawer(changed[i].before, i));
 	});
-	wrap.querySelectorAll('[data-side-after]').forEach((el) => {
+	root.querySelectorAll('[data-side-after]').forEach((el) => {
 		const i = +el.dataset.sideAfter;
 		if (changed[i]) el.addEventListener('click', () => openDrawer(changed[i].after, i));
 	});
@@ -116,16 +184,21 @@ async function runCompare() {
 		if (!repA.length) { toast('無法解析報表 A', true); return; }
 		if (!repB.length) { toast('無法解析報表 B', true); return; }
 
-		const typeA = repA[0].type;
-		const typeB = repB[0].type;
-		if (typeA !== typeB) {
-			toast('兩個檔案的報表類型不同：請都用 Coverity 或都用 BlackDuck', true);
-			return;
+		// Diff EVERY report type found in the two archives (usually Coverity and
+		// BlackDuck live side by side in one tarball), so no type is dropped.
+		const types = reportTypes(repA, repB);
+		const results = [];
+		let nAdded = 0, nRemoved = 0, nChanged = 0;
+		for (const type of types) {
+			const diff = compareBugs(flattenBugs(repA, type), flattenBugs(repB, type));
+			results.push({ type, diff });
+			nAdded += diff.added.length;
+			nRemoved += diff.removed.length;
+			nChanged += diff.changed.length;
 		}
 
-		const diff = compareBugs(flattenBugs(repA, typeA), flattenBugs(repB, typeB));
-		renderResults(diff);
-		toast('比對完成：新增 ' + diff.added.length + '／移除 ' + diff.removed.length + '／差異 ' + diff.changed.length);
+		renderResults(results);
+		toast('比對完成：新增 ' + fmt(nAdded) + '／移除 ' + fmt(nRemoved) + '／差異 ' + fmt(nChanged));
 	} catch (err) {
 		toast('比對失敗：' + (err && err.message ? err.message : err), true);
 		console.error(err);
