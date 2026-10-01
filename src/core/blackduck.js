@@ -76,7 +76,7 @@ export function parseBlackDuck(csvStr) {
 	const cw = idxOf(header, 'CWE');
 	const sh = idxOf(header, '短期建議版本');
 	const lg = idxOf(header, '長期建議版本');
-	const de = idxOf(header, '說明');
+	const de = idxOf(header, 'AI 說明');
 	const of = idxOf(header, '官方解法');
 	const wb = idxOf(header, '暫時規避方式');
 	const ex = idxOf(header, '已知攻擊程式');
