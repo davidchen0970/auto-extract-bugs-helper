@@ -1,4 +1,4 @@
-// CWE chunk — category: Cryptographic Issues (TLS / signature / hashing hardening).
+// CWE chunk — category: Cryptographic Issues (side channels, channel integrity / behavioral discrepancy hardening).
 //   what    : 簡短、繁中、白話+技術描述（(#) 弱點是什麼)
 //   problem : 「壞的寫法」程式片段（(#) 問題長怎樣)
 //   fixed   : 「修好的寫法」程式片段（(#) 解完會長怎樣)
@@ -8,6 +8,117 @@
 //   refs    : 參考（OWASP / MITRE 等）
 //   tags    : 英文搜尋標籤
 export default [
+	{
+		id: 'CWE-203',
+		name: 'Observable Discrepancy',
+		lang: 'python',
+		status: 'Complete',
+		what: `可觀察的差異。這是一族「旁路 oracle」的父類弱點：程式處理機密或隱私判斷時，
+對不同輸入或不同布林真相，在回應時間、行為、錯誤訊息、輸出大小等可觀察面向
+表現出差異，攻擊者就能把這種差異當作探針（oracle），逐一猜出帳號、推翻密碼
+或以反覆觀察推回內部狀態。它統領較專業的子女類別：計時差異（CWE-208）、
+行為差異（CWE-205）與隱蔽計時通道（CWE-385）。建議做法是讓敏感路徑的計算量、
+輸出內容與分支行為都與秘密無關——統一工作量、恆定時間比較、對所有失敗給一致的
+回應，並以 dummy 運算抹平數量與內容的差異。`,
+		problem: `# 不安全寫法：比較一遇不同或長度不符就提早 return，回應與耗時都洩漏真相
+def matches(stored, given):
+    if len(given) != len(stored):
+        return False                       # 長度錯就秒回，量時間即知長度
+    for a, b in zip(stored, given):
+        if a != b:
+            return False                  # 越早錯越早回，時序洩漏逐位
+    return True`,
+		fixed: `# 安全寫法：恆定時間比較，一律等時不等億回，不分誰長誰短
+import hmac
+def matches(stored, given):
+    return hmac.compare_digest(stored.encode(), given.encode())  # 不提早終止`,
+		patch: `@@
+-  def matches(stored, given):
+-      if len(given) != len(stored):
+-          return False
+-      for a, b in zip(stored, given):
+-          if a != b:
+-              return False
+-      return True
++  import hmac
++  def matches(stored, given):
++      return hmac.compare_digest(stored.encode(), given.encode())`,
+		refs: ['OWASP-Crypto', 'CWE-203'],
+		tags: ['side-channel', 'oracle', 'constant-time', 'timing'],
+	},
+	{
+		id: 'CWE-205',
+		name: 'Observable Behavioral Discrepancy',
+		lang: 'python',
+		status: 'Complete',
+		what: `可觀察的行為差異（帳號列舉 oracle）。此類弱點出現於程式在內部失敗呈現
+不同型態時給出「外型不一致」的回應——例如帳號不存在回「沒有這個帳號」而密碼
+錯誤回「密碼錯誤」、權限不足與找不到資源回傳不同狀態碼、或對存在與否採取不同
+動作。攻擊者就能逐一列舉合法帳號、資源或測試憑證，大幅縮小暴力破解範圍。安全
+訊息設計的原則是「對攻擊者而言各種失敗不可分辨」：建議做法是讓所有失敗都回同一個
+泛用且等價的回應（如一律「登入失敗」而不是揭露「帳號不存在」），並讓處理這些
+分支的計算與延遲也一致，杜絕從錯誤碼、欄位或行為上推斷內部布林真相。`,
+		problem: `# 不安全寫法：給不同的失敗系統別的訊息，等於把"帳號是否存在"標示出來
+def login(user, pw):
+    if not user_exists(user):
+        return "沒有這個帳號"       # 攻擊者可枚舉合法帳號
+    if not check_pw(user, pw):
+        return "密碼錯誤"
+    return issue_session(user)`,
+		fixed: `# 安全寫法：不管哪種失敗都回相同結果，帳號是否存在不可分辨
+def login(user, pw):
+    ok = user_exists(user) and check_pw(user, pw)   # 兩者都跑，行為一致
+    if not ok:
+        return "帳號或密碼錯誤"     # 同一訊息，無法分辨差別
+    return issue_session(user)`,
+		patch: `@@
+  def login(user, pw):
+-     if not user_exists(user):
+-         return "沒有這個帳號"
+-     if not check_pw(user, pw):
+-         return "密碼錯誤"
+-     return issue_session(user)
++     ok = user_exists(user) and check_pw(user, pw)
++     if not ok:
++         return "帳號或密碼錯誤"
++     return issue_session(user)`,
+		refs: ['OWASP-Auth', 'CWE-205'],
+		tags: ['login-oracle', 'user-enumeration', 'behavioral-discrepancy'],
+	},
+	{
+		id: 'CWE-208',
+		name: 'Observable Timing Discrepancy',
+		lang: 'python',
+		status: 'Complete',
+		what: `可觀察的計時差異。程式的執行時間依賴於秘密或高敏感比較的結果：密碼比較在
+遇第一個錯誤字元就提前回傳、只有「帳號存在」才跑成本較高的 KDF、或對
+不同長度的輸入花費不同時間。攻擊者只要大量量測並統計回應時間，就能逐步回復秘密，
+就算做不到完全還原也可大幅縮小空間。計時是公認最難防的旁路之一，因為它不是
+內容外洩而是「花多久」外洩。建議做法是讓敏感比較用恆定時間函式
+（hmac.compare_digest／MessageDigest.isEqual）、移除依賴祕密的提前終止分支，
+並讓運算成本與輸入無關，或對帳號存在與否跑完全等量的作業再統一回答。`,
+		problem: `# 不安全寫法：逐字元比較且遇到第一個差異就早退，計時洩漏每位資訊
+def matches(secret, guess):
+    for i in range(min(len(secret), len(guess))):
+        if secret[i] != guess[i]:
+            return False     # 越前面的位元對不上越快回傳 → 可量時間推出字首
+    return len(secret) == len(guess)`,
+		fixed: `# 安全寫法：恆定時間比較，執行時間與秘密內容完全無關
+import hmac
+def matches(secret, guess):
+    return hmac.compare_digest(secret.encode(), guess.encode())   # 不提前終止`,
+		patch: `@@
+-  def matches(secret, guess):
+-      for i in range(min(len(secret), len(guess))):
+-          if secret[i] != guess[i]:
+-              return False
+-      return len(secret) == len(guess)
++  import hmac
++  def matches(secret, guess):
++      return hmac.compare_digest(secret.encode(), guess.encode())`,
+		refs: ['OWASP-Crypto', 'CWE-208'],
+		tags: ['timing-attack', 'constant-time', 'hmac', 'compare'],
+	},
 	{
 		id: 'CWE-295',
 		name: 'Improper Certificate Validation',
@@ -169,6 +280,75 @@ function authorize(req) {
 		tags: ['jwt', 'signature-verification', 'decode-only', 'integrity'],
 	},
 	{
+		id: 'CWE-385',
+		name: 'Covert Timing Channel',
+		lang: 'python',
+		status: 'Complete',
+		what: `隱蔽計時通道。把受保護資料的內容，透過「花多久才做完」這條旁路洩露出去：
+例如不同秘密值讓程式走成本高低不同的分支（條件式壓縮、KDF 或解壓），或某種
+忙線迴圈的長度隨秘密內容而變。旁觀者只要量測耗時，就能把「資料是多少」解讀
+出來，比計時差異更清楚地把耗時當成一條真正的資訊通道。它躲過內容型檢查的監看。
+建議做法是敏感轉換一律使用與秘密無關的常時間計算：避免分支與運算步伐依賴秘密、
+統一開銷，必要時以固定延遲或 dummy 運算把可分辨的差異完全填平，讓耗時再也無法
+攜帶資料。`,
+		problem: `# 不安全寫法：是否為管理者走不同的壓縮路徑，耗時與權限綁在一起
+def send(user_data, is_admin):
+    if is_admin:
+        payload = compress(user_data)     # 較耗時路徑，量時間就看得出 is_admin
+    else:
+        payload = user_data
+    write(socket, payload)`,
+		fixed: `# 安全寫法：所有使用者都走同一計算路徑、同一成本，耗時與秘密無關
+def send(user_data, is_admin):
+    payload = compress(user_data)       # 統一壓縮→加密，所有人都一樣
+    write(socket, enc(payload))`,
+		patch: `@@
+  def send(user_data, is_admin):
+-     if is_admin:
+-         payload = compress(user_data)     # 較耗時路徑洩漏權限
+-     else:
+-         payload = user_data
+-     write(socket, payload)
++     payload = compress(user_data)       # 統一成本
++     write(socket, enc(payload))`,
+		refs: ['OWASP-Crypto', 'CWE-385'],
+		tags: ['timing-channel', 'side-channel', 'covert'],
+	},
+	{
+		id: 'CWE-514',
+		name: 'Covert Channel',
+		lang: 'java',
+		status: 'Complete',
+		what: `隱蔽通道。攻擊者可藉由程式的某種共享資源或可觀察行為，在不受正常安全控制
+攔截的情況下竊取或傳出機密資料：例如把一個位元的真相編碼進迴圈的忙線長度、
+某個全局計數器的數值、物件的存在與否，或迴應的快慢，於是訊號透過一條「本來與
+傳送機密無關」的管道流出去。之所以棘手，是因為內容檢查或網路層過濾看不到這條通道。
+CWE-385（計時）只是它的一種特例。建議做法是先盤點程式「可對外觀察」的輸出與
+共享資源，對不受信任的輸入不留下任何可被利用的輸出通道，敏感程序以 sandbox 隔離，
+並且只允許透過受控且經 allowlist 的管道對外輸出資料。`,
+		problem: `// 不安全寫法：拿忙線迴圈的執行時間把內部機密一位一位編碼「發送」出去
+public void emit(boolean secret) {
+    long since = System.nanoTime();
+    while (System.nanoTime() - since < (secret ? 50_000_000L : 1_000_000L)) {
+    }   // 旁觀者量測這次呼叫的耗時即得到 secret
+}`,
+		fixed: `// 安全寫法：對外耗時與內部機密完全解耦，只允許受控制的輸出通道
+public void emit(boolean secret) {
+    // secret 不影響任何耗時或可觀察行為，只能經由受控管道寫出
+    controlledChannel.write(allowlistedTransform(secret));
+}`,
+		patch: `@@
+  public void emit(boolean secret) {
+-     long since = System.nanoTime();
+-     while (System.nanoTime() - since < (secret ? 50_000_000L : 1_000_000L)) {
+-     }   // 耗時即外洩 secret
++     // 耗時不再隨 secret 變化；只用受控通道輸出
++     controlledChannel.write(allowlistedTransform(secret));
+  }`,
+		refs: ['CWE-514'],
+		tags: ['covert-channel', 'side-channel', 'exfiltration'],
+	},
+	{
 		id: 'CWE-759',
 		name: 'Use of a One-Way Hash without a Salt',
 		lang: 'python',
@@ -195,14 +375,122 @@ def store_password(raw: str) -> str:
 -  import hashlib
 -
 -  def store_password(raw: str) -> str:
--      return hashlib.sha1(raw.encode()).hexdigest()   # 無鹽、又快，2 位使用者同碼即重複
+-      return hashlib.sha1(raw.encode()).hexdigest()   # 無鹽、又快，同碼即重複
 +  from argon2 import PasswordHasher
 +
 +  ph = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=4)
 +
 +  def store_password(raw: str) -> str:
-+      return ph.hash(raw)   # 內建每條獨立隨機鹽 + 成本參數，同密碼結果也不重複`,
++      return ph.hash(raw)   # 內建獨立隨機鹽 + 成本參數`,
 		refs: ['OWASP-Crypto', 'CWE-759'],
 		tags: ['password-hashing', 'salt', 'rainbow-table', 'sha1', 'md5'],
+	},
+	{
+		id: 'CWE-923',
+		name: 'Improper Restriction of Communication Channel to Intended Endpoints',
+		lang: 'python',
+		status: 'Complete',
+		what: `通訊通道未限制到預期的端點。伺服器或用戶端建立的通訊沒有把對端限制在
+「原本想要通訊的對象」：例如伺服器對任何來源都開放控制指令、用戶端連線時不
+驗證對方憑證也就不受限制連到哪個假冒端點。如此非預期的端點（別台主機、偽裝
+的伺服器、未知的參與者）也能進入通道，機密被冒名者收走或控制指令被任意來源觸發
+。它與「可被非端點存取」（CWE-300）相近，這裡特別強調通道本應限制在被告知的
+端點集合。建議做法是連線兩端互相認證（mTLS），伺服器只信任已知端點的憑證，
+用戶端驗證對端主機名並可對固定公鑰 pin，讓非預期端點在握手時就被拒絕。`,
+		problem: `# 不安全寫法：控制用的伺服器對任何能連到 port 的來源都開放
+import socket
+s = socket.socket(); s.bind(('0.0.0.0', 9443)); s.listen(10)
+while True:
+    c, _ = s.accept()          # 沒驗證來源，誰來都收
+    cmd = c.recv(1024)
+    do_privileged(cmd)         # 任何主機都能下控制指令`,
+		fixed: `# 安全寫法：以 mTLS 只信任已知端點，非預期端點握手即失敗
+import socket, ssl
+ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+ctx.load_cert_chain('/etc/certs/srv.pem', '/etc/certs/srv.key')
+ctx.load_verify_locations('/etc/certs/allowed-clients')   # 只認已知端點
+ctx.verify_mode = ssl.CERT_REQUIRED                     # 客戶端也必須出示憑證
+while True:
+    c, _ = s.accept()
+    with ctx.wrap_socket(c, server_side=True) as tls:   # 未知端點會拋例外
+        do_privileged(tls.recv(1024))`,
+		patch: `@@
++  import socket, ssl
++  ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
++  ctx.load_cert_chain('/etc/certs/srv.pem', '/etc/certs/srv.key')
++  ctx.load_verify_locations('/etc/certs/allowed-clients')
++  ctx.verify_mode = ssl.CERT_REQUIRED
+   while True:
+       c, _ = s.accept()
+-      cmd = c.recv(1024); do_privileged(cmd)
++      with ctx.wrap_socket(c, server_side=True) as tls:
++          do_privileged(tls.recv(1024))`,
+		refs: ['OWASP-Transport', 'CWE-923'],
+		tags: ['mtls', 'endpoint-restriction', 'channel', 'peer-auth'],
+	},
+	{
+		id: 'CWE-924',
+		name: 'Improper Enforcement of Message Integrity During Transmission in a Communication Channel',
+		lang: 'python',
+		status: 'Complete',
+		what: `傳輸過程的訊息完整性未被確實執行。程式在傳輸資料時沒有替訊息加任何能偵測
+竄改的完整性標記，或加了卻不在接收端執行驗證：例如把控制指令或配置直接送出去、
+對消息資料加算未涵蓋全文的 MAC、或驗證失敗仍照常處理。中間人就可在訊息戰報
+中改寫內容而不被察覺，導致接收端依竄改後的資料動作。它與「缺少完整性檢查
+支援」（CWE-353）相近，但重點落在「在一條通訊通道上傳輸」時要確實執行
+完整性把關。建議做法是對每則消息以雙方共用的金鑰計算並附加 HMAC／簽章，接收
+端一律以恆定時間驗證其涵蓋全部欄位（含對談與序號等 context），驗不過就直接
+拋棄、拒絕處理。`,
+		problem: `# 不安全寫法：把遙控指令直接直播出去，中間可欄改而不被發覺
+import socket, json
+s = socket.create_connection(('ctrl.example.com', 9999))
+s.sendall(json.dumps({'cmd': 'apply', 'cfg': cfg}).encode())   # 無 HMAC、有數據`,
+		fixed: `# 安全寫法：以 HMAC 綁住整個 payload 並附上，對端驗不過就拒收
+import socket, json, hmac, hashlib
+payload = json.dumps({'cmd': 'apply', 'cfg': cfg}).encode()
+mac = hmac.new(CTRL_KEY, payload, hashlib.sha256).digest()   # 涵蓋全文
+s.sendall(mac + payload)          # 中間改任何 bit → MAC 對不上 → 對端拒收`,
+		patch: `@@
++  import hmac, hashlib
+   payload = json.dumps({'cmd': 'apply', 'cfg': cfg}).encode()
+-  s.sendall(payload)               # 可被肆意竄改
++  mac = hmac.new(CTRL_KEY, payload, hashlib.sha256).digest()
++  s.sendall(mac + payload)        # 綁全文，竄改即被識破`,
+		refs: ['OWASP-Transport', 'CWE-924'],
+		tags: ['message-integrity', 'hmac', 'transmission', 'tamper'],
+	},
+	{
+		id: 'CWE-1303',
+		name: 'Non-Transparent Sharing of Microarchitectural Resources',
+		lang: 'c',
+		status: 'Complete',
+		what: `微架構資源的非透明共用。CPU 中的快取、分支預測器、TLB 等資源在不同執行
+上下文之間共用而未做隔離，攻擊程序便能用「走快取需花多少時間」這類腳印，
+推測受害者正在處理的機密——Spectre／Meltdown 這類暫態執行側通道都隸屬此類。
+秘密一旦當作記憶體位址（陣列索引、間接分支目標）使用，會留下可量測的足跡。
+緩解分成多層：系統層使用處理器與作業系統的隔離／緩解開關，軟體層則要求機敏
+路徑「與存取位址及分支無關」——不讓機密參與陣列索引或流程分支，改用常時間
+累加、遮罩或迴廊遍歷，確保無論機密值多少，執行的記憶體足跡都完全相同。`,
+		problem: `// 不安全寫法：以機密當作陣列索引，快取的足跡向外洩漏機密內容
+uint8_t SBOX[256];
+volatile uint8_t v = SBOX[secret];   // 秘密進入存取位址：共用快取可被量測`,
+		fixed: `// 安全寫法：以遮罩累加遍歷整個查表，存取足跡與機密完全無關
+uint8_t SBOX[256];
+uint8_t r = 0;
+for (int i = 0; i < 256; i++) {
+    uint8_t m = ((int8_t)((i ^ secret) - 1)) >> 7;   // i==secret 才全 1
+    r |= SBOX[i] & m;                                     // 位址固定遍歷，不洩漏
+}`,
+		patch: `@@
+-  uint8_t SBOX[256];
+-  volatile uint8_t v = SBOX[secret];   // 索引依賴機密，快取腳印外洩
++  uint8_t SBOX[256];
++  uint8_t r = 0;
++  for (int i = 0; i < 256; i++) {
++      uint8_t m = ((int8_t)((i ^ secret) - 1)) >> 7;
++      r |= SBOX[i] & m;
++  }`,
+		refs: ['CWE-1303'],
+		tags: ['side-channel', 'cache', 'speculative-execution', 'constant-time'],
 	},
 ];

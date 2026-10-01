@@ -105,6 +105,50 @@ function openProfile(name) {
 		tags: ['separator', 'bypass', 'escape', 'canonicalization', 'path-traversal'],
 	},
 	{
+		id: 'CWE-29',
+		name: "Path Traversal: '\\..\\filename'",
+		lang: 'python',
+		status: 'Complete',
+		what: `「反斜線編碼」的相對路徑穿越（Windows 風格的 \\..\\）。CWE-29 是 CWE-23 在
+	Windows 分離符下的特例：作業系統同時把 / 與 \\ 都當成路徑分離符，但很多防禦只針對「正斜線版
+	的 ../」做替換或黑名單，於是攻擊者改用反斜線寫成 ..\\..\\..\\etc\\passwd 就能原封不動穿越，
+	因為清洗規則根本沒遇到自己認識的字串。這類繞過的字眼在於「只擋一種編碼」：只要分離符、編碼、
+	或大小寫任一種沒被列進黑名單，爬出根目錄的行為照樣成立。修法不是把每一種 \\ 與 / 的排列窮舉
+	掉，而是先把輸入與基底目錄 join 後用 realpath 正規化，再用 commonpath 嚴格確認最終路徑仍在受控
+	根目錄之下，任何一種分離符編碼都爬不出去。`,
+		problem: `# 不安全寫法：只對正斜線的 ../ 做字串清洗,Windows 反斜線版 ..\\ 完全沒被擋
+import os
+
+def load_local(win_name):
+    # 只處理字面上的 '../';送 "..\\\\..\\\\..\\\\etc\\\\passwd" 因不含'../'而通過
+    cleaned = win_name.replace('../', '')
+    target = os.path.join('C:\\\\srv\\\\public', cleaned)  # 反斜線照樣當分離符一路往上爬
+    with open(target, 'rb') as f:      # 開到的是 C:\\\\etc\\\\passwd,不在 public 內
+        return f.read()`,
+		fixed: `# 安全寫法：不挑編碼區別 / 與 \\,join 後正規化再做包含性檢查
+import os
+
+BASE = os.path.realpath('C:\\\\srv\\\\public')
+
+def load_local(win_name):
+    target = os.path.realpath(os.path.join(BASE, win_name))  # 攤平 ..\\、../、./ 所有編碼
+    if os.path.commonpath([target, BASE]) != BASE:            # 反正規化後爬出 BASE => 拒絕
+        raise PermissionError("path escapes restricted dir")
+    with open(target, 'rb') as f:
+        return f.read()`,
+		patch: `@@
+   def load_local(win_name):
+-    cleaned = win_name.replace('../', '')
+-    target = os.path.join('C:\\\\srv\\\\public', cleaned)
++    target = os.path.realpath(os.path.join(BASE, win_name))
++    if os.path.commonpath([target, BASE]) != BASE:
++        raise PermissionError("path escapes restricted dir")
+     with open(target, 'rb') as f:
+         return f.read()`,
+		refs: ['CWE-29', 'CWE-23', 'SEI CERT'],
+		tags: ['backslash', 'windows', 'path-traversal', 'separator-bypass', 'realpath'],
+	},
+	{
 		id: 'CWE-36',
 		name: 'Absolute Path Traversal',
 		lang: 'c',

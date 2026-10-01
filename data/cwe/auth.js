@@ -1,7 +1,7 @@
 // CWE chunk — category: Authentication & Authorization.
 //   what    : 簡短、繁中、白話+技術描述（(#) 弱點是什麼)
-//   problem : 「壞的寫法」程式片段（(#) 問題長怎樣)
-//   fixed   : 「修好的寫法」程式片段（(#) 解完會長怎樣)
+//   problem : 「壞的寫法」程式片段（(#) 問題長怎樣）
+//   fixed   : 「修好的寫法」程式片段（(#) 解完會長怎樣）
 //   patch   : problem → fixed 的統一 diff 文字（(#) 範例 patch)
 //   lang    : 此條範例主力語言，依 CWE 類別選擇
 //   status  : Complete | Incomplete | Deprecated
@@ -9,13 +9,123 @@
 //   tags    : 英文搜尋標籤
 export default [
 	{
+		id: 'CWE-201',
+		name: 'Insertion of Sensitive Information Into Sent Data',
+		lang: 'python',
+		status: 'Complete',
+		what: `插入敏感資訊至送出的資料中（Insertion of Sensitive Information Into Sent Data）。程式把不該外流的敏感資料——
+	作業系統種類與版本、內部 IP、明文憑證、使用者個人資料——連同正常回應一次次傳給不受信任的接收端。最常見的來源是除錯能力
+	本身：例如把完整 stack trace、資料庫連線字串、或系統路徑寫進錯誤回應的 body、HTTP 標頭或錯誤頁。攻擊者只要觸發一次
+	錯誤、或觀察回應裡的欄位，就能收集到規劃進下一步攻擊所需的資訊。正確做法是對送出的每項資料都做「最小化」：回應只暴露
+	最低必要資訊，敏感欄位一律遮罩或拔掉，把詳細細節改寫入「受保護的伺服器端日誌」而非回給使用者。`,
+		problem: `# 不安全寫法：錯誤處理把整份 exception 與內部路徑直接吐回頁面 / 回應
+from flask import Flask, jsonify
+app = Flask(__name__)
+
+@app.errorhandler(Exception)
+def on_err(exc):
+    # 把內部堆疊與設定字串整個送給使用者
+    return jsonify(detail=str(exc), stack=traceback.format_exc(),
+                  dsn=app.config['DSN'], host=os.uname().nodename), 500`,
+		fixed: `# 安全寫法：回應只回泛化訊息，細節全部改寫入伺服器端日誌
+from flask import Flask, jsonify
+import logging
+app = Flask(__name__)
+log = logging.getLogger('api')
+
+@app.errorhandler(Exception)
+def on_err(exc):
+    log.exception('unhandled error')          # 明細只進 server-side 日誌
+    return jsonify(detail='internal error'), 500  # 客戶端拿不到堆疊／路徑／設定`,
+		patch: `@@
+  @app.errorhandler(Exception)
+  def on_err(exc):
+-     return jsonify(detail=str(exc), stack=traceback.format_exc(),
+-                   dsn=app.config['DSN'], host=os.uname().nodename), 500
++     log.exception('unhandled error')
++     return jsonify(detail='internal error'), 500`,
+		refs: ['OWASP-Leak', 'CWE-201'],
+		tags: ['sensitive-data', 'info-exposure', 'stack-trace'],
+	},
+	{
+		id: 'CWE-202',
+		name: 'Exposure of Sensitive Data Through Data Queries',
+		lang: 'python',
+		status: 'Complete',
+		what: `經由資料庫查詢洩漏敏感資料（Exposure of Sensitive Data Through Data Queries）。在把查詢結果回傳、或把 ORM
+	物件序列化時，連同資料庫內部結構、欄位名，甚至不相關的「後端私有欄位」一起交出去。最典型的是 SELECT * 回傳整列、或
+	直接序列化整個 model 物件，把 password_hash、internal_token、is_deleted、created_by 這種後端專用欄位也一起帶給客戶端；在
+	除錯時把整份含敏感參數的查詢字串寫進回應或日誌同樣如此。被拖出的欄位若含金鑰、雜湊或內部管理員旗標，等於把攻防面
+	直接奉送。正確做法是「白名單式」地挑選需要回傳的欄位，任何後端內部性質在序列化時一律排除。`,
+		problem: `# 不安全寫法：把 model 物件整個序列化回給前端，private 欄位一併外流
+from flask import Flask, jsonify
+@app.get('/api/user/<int:uid>')
+def get_user(uid):
+    row = db.sess.query(User).get(uid)          # User 含 password_hash、api_token 等欄位
+    return jsonify(row.__dict__)                # SELECT * 全吐：雜湊跟 token 都出去了`,
+		fixed: `# 安全寫法：白名單式挑欄位，只回前端真正需要的公開欄目
+from flask import Flask, jsonify
+@app.get('/api/user/<int:uid>')
+def get_user(uid):
+    row = db.sess.query(User).get(uid)
+    if row is None:
+        return jsonify(error='not found'), 404
+    return jsonify(id=row.id, name=row.name, avatar=row.avatar)  # 明列允許的欄位集`,
+		patch: `@@
+  @app.get('/api/user/<int:uid>')
+  def get_user(uid):
+      row = db.sess.query(User).get(uid)
+-     return jsonify(row.__dict__)
++     if row is None:
++         return jsonify(error='not found'), 404
++     return jsonify(id=row.id, name=row.name, avatar=row.avatar)`,
+		refs: ['OWASP-Leak', 'CWE-202'],
+		tags: ['sensitive-data', 'orm-serialization', 'select-star'],
+	},
+	{
+		id: 'CWE-254',
+		name: 'Security Features',
+		lang: 'nodejavascript',
+		status: 'Deprecated',
+		what: `安全功能（Security Features）——這是 MITRE 已停用（Deprecated）的里程碑性質（Landmark）條目，僅在此保留說明
+	與歷史脈絡。它泛指身分驗證、授權、權限管理、工作階段管理、密碼政策這整群「安全功能」，屬於涵蓋範圍極廣的聚合概念，幾乎
+	等於每個角色體制各自條目化的總和，過於籠統，MITRE 已不再建議用它來映射真實弱點。實務上應改以它旗下的具體子條目來
+	對症下藥——CWE-287 不當身分驗證、CWE-284 不當存取控制、CWE-269 不當權限管理、CWE-613 工作階段不足過期等等。
+	本條保留範例用意，只在示範「安全功能被分散地、各處自行實作以致規則不一」這種概括性缺失的樣貌，不應視為獨立弱點。`,
+		problem: `// 示範樣態：「驗證／授權」被散落各 handler 自行重蓋一遍，行為彼此不一致
+app.get('/api/a', (req, res) => {
+  if (!req.cookies.is_admin) return res.sendStatus(401);   // v1 自己寫的檢查
+  sendA(res);
+});
+app.get('/api/b', (req, res) => {
+  sendB(res);                                           // v2 甚至連檢查都沒有
+});`,
+		fixed: `// 示範樣態：把所有安全功能收斂為一套共用且統一的伺服器端中介層
+app.use(centralAuth);                      // 統一的身分驗證
+app.get('/api/a', requireRole(['admin']), (req, res) => sendA(res));
+app.get('/api/b', requireRole(['user', 'admin']), (req, res) => sendB(res));`,
+		patch: `@@
+-  app.get('/api/a', (req, res) => {
+-    if (!req.cookies.is_admin) return res.sendStatus(401);
+-    sendA(res);
+-  });
+-  app.get('/api/b', (req, res) => {
+-    sendB(res);
+-  });
++  app.use(centralAuth);
++  app.get('/api/a', requireRole(['admin']), (req, res) => sendA(res));
++  app.get('/api/b', requireRole(['user', 'admin']), (req, res) => sendB(res));`,
+		refs: ['OWASP-Auth', 'CWE-287'],
+		tags: ['security-features', 'landmark', 'deprecated'],
+	},
+	{
 		id: 'CWE-287',
 		name: 'Improper Authentication',
 		lang: 'python',
 		status: 'Complete',
 		what: `身分驗證不當。驗證「來的是誰」的機制有漏洞，攻擊者可繞過登入流程或冒充他人身分。
-最典型的是伺服器把驗證結果放在使用者可控的地方（例如表單欄位、明文 Cookie），
-然後逕自信任它當作「已登入／是管理員」的依據，實際上並未驗證密碼，也未妥善管理伺服器端工作階段。`,
+	最典型的是伺服器把驗證結果放在使用者可控的地方（例如表單欄位、明文 Cookie），
+	然後逕自信任它當作「已登入／是管理員」的依據，實際上並未驗證密碼，也未妥善管理伺服器端工作階段。`,
 		problem: `# 不安全寫法：逕自信任表單欄位 is_admin，使用者只要送出 1，就可能取得管理員權限
 from flask import Flask, request
 
@@ -53,17 +163,17 @@ def login():
 -    # 沒有查資料庫、沒有比對密碼，只把前端送來的旗標作為判斷依據
 -    is_admin = request.form.get('is_admin') == '1'
 -    resp = make_response({'ok': True})
--    resp.set_cookie('admin', str(is_admin).lower())
+-    resp.set_cookie('admin', str(is_admin).lower())  # Cookie 明文、且由使用者控制
 -    return resp
 +    user = request.form.get('user')
 +    pwd  = request.form.get('password')
-+    rec = db.get_user(user)
++    rec = db.get_user(user)               # 從資料庫取回使用者記錄
 +    if rec is None or not hmac.compare_digest(
 +            hashlib.sha256(rec['salt'] + pwd.encode()).hexdigest(),
 +            rec['hash']):
 +        return make_response('bad creds', 401)
 +    session.clear()
-+    session['uid'], session['admin'] = rec['id'], rec['is_admin']
++    session['uid'], session['admin'] = rec['id'], rec['is_admin']  # 伺服器端保存
 +    return make_response({'ok': True})`,
 		refs: ['OWASP-Auth', 'CWE-287'],
 		tags: ['authentication', 'auth-bypass', 'session'],
@@ -74,8 +184,8 @@ def login():
 		lang: 'nodejavascript',
 		status: 'Complete',
 		what: `關鍵功能缺少身分驗證。像是刪除帳號、刷新憑證、管理後台這類高敏感操作，
-對外開了路由卻沒套任何驗證中介層（middleware），匿名或未登入者可以直接呼叫。
-建議做法是在這些「臨界功能」前面一律掛上 requireAuth 中介層，先驗證再處理。`,
+	對外開了路由卻沒套任何驗證中介層（middleware），匿名或未登入者可以直接呼叫。
+	建議做法是在這些「臨界功能」前面一律掛上 requireAuth 中介層，先驗證再處理。`,
 		problem: `// 不安全寫法：管理類操作路由沒有掛驗證中介層，任何人 POST 就能刪帳號
 const express = require('express');
 const app = express();
@@ -118,8 +228,8 @@ app.delete('/api/account/:id', requireAuth, (req, res) => {
 		lang: 'nodejavascript',
 		status: 'Complete',
 		what: `未限制過多的驗證嘗試次數。登入介面沒有針對每個 IP／帳號做嘗試計數與鎖定，
-攻擊者就能無限暴力猜密碼（brute force）。建議做法是統計失敗次數、做速率限制（rate limit），
-超過上限就鎖定一段時間或加入漸進式延遲。`,
+	攻擊者就能無限暴力猜密碼（brute force）。建議做法是統計失敗次數、做速率限制（rate limit），
+	超過上限就鎖定一段時間或加入漸進式延遲。`,
 		problem: `// 不安全寫法：登入迴圈無限重試，每次只比對密碼對不對，不計次數、不延遲
 const login = (user, pwd) => db.getUser(user).then(r => {
   if (!r || r.pwd != pwd) {                    // 密碼比對，還用明文
@@ -170,13 +280,51 @@ const login = async (user, pwd) => {
 		tags: ['brute-force', 'rate-limit', 'authentication'],
 	},
 	{
+		id: 'CWE-359',
+		name: 'Exposure of Private Personal Information',
+		lang: 'nodejavascript',
+		status: 'Complete',
+		what: `私人個人資訊（PII）外洩（Exposure of Private Personal Information）。系統收集或處理身分、電話、信箱、地址、
+	健康、財務、定位這類可識別個人（PII）的資訊，卻在介面回應、檔案權限或授權流程的某些點把它暴露出來。常見成因是把所有
+	欄位一口氣序列化回傳、把敏感欄位塞進 URL 查詢字串或日誌、或預設就把完整資料同步到次要系統。攻擊者得到這些資料即可
+	拿來做個資販售、釣魚、帳號竊取或身分盜用，也使系統因違反個資法（GDPR 等）面臨重罰。正確做法是對 PII 一律加密
+	儲存與遮罩（mask）顯示、最小化收集範圍、序列化時採白名單回傳，並把對 PII 的每一次存取寫入不可竄改的稽核日誌。`,
+		problem: `// 不安全寫法：完整個資欄位含敏感號碼全量回給排序／列表端，還印進 log 查
+app.get('/api/people', async (req, res) => {
+  const rows = await db.people.find();      // 含 email、phone、doc_no 完整個資
+  rows.forEach((r) => logger.info(JSON.stringify(r)));   // 隱私資料進日誌
+  res.json(rows);                        // 前端明明只需要 id 跟 name，卻附上全套 PII
+});`,
+		fixed: `// 安全寫法：列表只回白名單欄位；PII 顯示時遮罩，日誌也一律不含裸個資
+app.get('/api/people', async (req, res) => {
+  const rows = await db.people.pick('id', 'name');      // 只取需要的欄
+  res.json(rows.map((r) => ({
+    id: r.id, name: r.name,
+    phone: maskPhone(r.phone),           // 只露尾 3 碼
+  })));                                // email / doc_no 根本不下行
+});`,
+		patch: `@@
+  app.get('/api/people', async (req, res) => {
+-   const rows = await db.people.find();
+-   rows.forEach((r) => logger.info(JSON.stringify(r)));
+-   res.json(rows);
++   const rows = await db.people.pick('id', 'name');
++   res.json(rows.map((r) => ({
++     id: r.id, name: r.name,
++     phone: maskPhone(r.phone),
++   })));
+  });`,
+		refs: ['OWASP-Pii', 'CWE-359'],
+		tags: ['pii', 'privacy', 'personal-data'],
+	},
+	{
 		id: 'CWE-521',
 		name: 'Weak Password Requirements',
 		lang: 'nodejavascript',
 		status: 'Complete',
 		what: `密碼需求過弱。註冊或改密碼時只要「非空字串」就收，沒有最小長度、複雜度或禁用常見弱密碼清單，
-使用者很容易設成 123 / password 這種極易破解的密碼。建議做法是明訂強度規則（長度下限、字元種類），
-並搭配 zxcvbn-ts 這類「弱密碼預測」來拒絕常見密碼。`,
+	使用者很容易設成 123 / password 這種極易破解的密碼。建議做法是明訂強度規則（長度下限、字元種類），
+	並搭配 zxcvbn-ts 這類「弱密碼預測」來拒絕常見密碼。`,
 		problem: `// 不安全寫法：密碼只要 exists 就收，強度完全沒把關
 async function register(req, res) {
   const { user, password } = req.body;
@@ -187,33 +335,23 @@ async function register(req, res) {
   res.status(201).json({ ok: true });
 }`,
 		fixed: `// 安全寫法：長度 + 字元種類下限，加上字典檢查拒絕常見弱密碼
-import { zxcvbn } from 'zxcvbn-ts';
-
 async function register(req, res) {
   const { user, password } = req.body;
-  const lenOk = password.length >= 12;
-  const clsOk = /[a-z]/.test(password) && /[A-Z]/.test(password)
-              && /\\d/.test(password) && /[^A-Za-z0-9]/.test(password);
-  const weak = zxcvbn(password).score < 3;            // 字典/常用弱密碼直接擋
-  if (!lenOk || !clsOk || weak) {
-    return res.status(400).json({ error: 'password too weak' });
-  }
+  const ok = password && password.length >= 12 &&
+    zxcvbn(password).score >= 3 && !COMMON_PW.has(password);
+  if (!ok) return res.status(400).json({ error: 'weak password' });
   const hash = await bcrypt.hash(password, 12);
   await db.users.insertOne({ user, hash });
   res.status(201).json({ ok: true });
 }`,
 		patch: `@@
+   const { user, password } = req.body;
 -  if (!password) return res.status(400).json({ error: 'password required' });
--  // 沒查長度、沒查複雜度，"1" 也會過
--  const hash = await bcrypt.hash(password, 10);
-+  const lenOk = password.length >= 12;
-+  const clsOk = /[a-z]/.test(password) && /[A-Z]/.test(password)
-+              && /\\d/.test(password) && /[^A-Za-z0-9]/.test(password);
-+  const weak = zxcvbn(password).score < 3;
-+  if (!lenOk || !clsOk || weak) {
-+    return res.status(400).json({ error: 'password too weak' });
-+  }
++  const ok = password && password.length >= 12 &&
++    zxcvbn(password).score >= 3 && !COMMON_PW.has(password);
++  if (!ok) return res.status(400).json({ error: 'weak password' });
 +  const hash = await bcrypt.hash(password, 12);
+-  const hash = await bcrypt.hash(password, 10);
    await db.users.insertOne({ user, hash });`,
 		refs: ['OWASP-Password', 'CWE-521'],
 		tags: ['password', 'weak', 'policy'],
@@ -224,8 +362,8 @@ async function register(req, res) {
 		lang: 'php',
 		status: 'Complete',
 		what: `密碼遺忘的重設機制太弱。例如用可被猜測的亂數（mt_rand）當重設 token、
-把新密碼直接寄回信箱、或 token 沒有發行時間與一次性失效。攻擊者可重設別人的帳號。
-建議做法是產生夠強的 crypto 隨機 token、到期即失效、只存雜湊、且整個流程可以提早失效。`,
+	把新密碼直接寄回信箱、或 token 沒有發行時間與一次性失效。攻擊者可重設別人的帳號。
+	建議做法是產生夠強的 crypto 隨機 token、到期即失效、只存雜湊、且整個流程可以提早失效。`,
 		problem: `<?php // 不安全寫法：mt_rand() 產生可預測的 token，而且直接寄「明文」重設碼
 $token = mt_rand(100000, 999999);            // 僅 90 萬種可能值，可被暴力窮舉掃過
 $link  = "https://example.com/reset?uid={$uid}&token={$token}";
@@ -234,7 +372,7 @@ $db->query("UPDATE users SET reset_token='$token' WHERE id=$uid");`,
 		fixed: `<?php // 安全寫法：random_bytes 產生強隨機 token、以雜湊存庫、帶有效期限且一次性
 $token = bin2hex(random_bytes(32));                     // 256-bit，掃不到
 $hash  = password_hash($token, PASSWORD_BCRYPT);       // 庫裡只存雜湊
-$exp   = time() + 15 * 60;                            // 15 分鐘內有效
+$exp   = time() + 15 * 60;                        // 15 分鐘內有效
 $db->prepare('UPDATE users SET reset_hash=?, reset_exp=? WHERE id=?')
    ->execute([$hash, $exp, $uid]);
 mail($email, 'Reset', "https://example.com/reset?token=$token"); // 給的是臨時 token`,
@@ -258,8 +396,8 @@ mail($email, 'Reset', "https://example.com/reset?token=$token"); // 給的是臨
 		lang: 'python',
 		status: 'Complete',
 		what: `使用硬編碼憑證。把資料庫密碼、API Key、連線字串直接寫死在程式碼裡，
-進到版本庫就等於外流，也無法輪換（每次都得改程式碼並重新部署）。建議做法是憑證從環境變數、
-config server 或 secret manager 注入，程式碼裡完全不出現秘密。`,
+	進到版本庫就等於外流，也無法輪換（每次都得改程式碼並重新部署）。建議做法是憑證從環境變數、
+	config server 或 secret manager 注入，程式碼裡完全不出現秘密。`,
 		problem: `# 不安全寫法：密碼寫死在原始碼，一推上 repo 秘密就外洩
 DB_URL = "postgres://app:SuperS3cret@db.internal:5432/app"
 
@@ -291,8 +429,8 @@ def connect():
 		lang: 'nodejavascript',
 		status: 'Complete',
 		what: `缺少授權檢查。只驗證「有登入」（authenticated），卻沒檢查「這個人有沒有權限做這件事」。
-於是一般使用者只要直接呼叫路由，就能打管理功能或存取別人的資源。
-修法是在每個敏感路由都掛上以「角色／擁有權」為依據的授權中介層（authorization/middleware）。`,
+	於是一般使用者只要直接呼叫路由，就能打管理功能或存取別人的資源。
+	修法是在每個敏感路由都掛上以「角色／擁有權」為依據的授權中介層（authorization/middleware）。`,
 		problem: `// 不安全寫法：只確認 req.session.uid 存在（有登入）就放行，沒檢查是不是管理員
 app.get('/api/admin/export', (req, res) => {
   if (!req.session.uid) return res.sendStatus(401);   // 已登入就放行 ???
@@ -339,8 +477,8 @@ app.get('/api/admin/export', requireAdmin, (req, res) => {
 		lang: 'nodejavascript',
 		status: 'Complete',
 		what: `授權檢查做錯。授權決策使用了錯誤的依據，例如拿 request body／query 送來的 role 或 url 字串當真、
-檢查順序寫反、或比對使用者 id 時取錯來源，讓本該沒權限的人被放行。
-建議做法是授權一律以伺服器端資料（session + DB 記錄）為唯一依據，並確認檢查順序。`,
+	檢查順序寫反、或比對使用者 id 時取錯來源，讓本該沒權限的人被放行。
+	建議做法是授權一律以伺服器端資料（session + DB 記錄）為唯一依據，並確認檢查順序。`,
 		problem: `// 不安全寫法：決策拿使用者可控的 body 當依據，自己送 role:"admin" 就被當管理員
 app.delete('/api/order/:id', (req, res) => {
   const granted = req.body.role === 'admin';            // role 是使用者自己填的！
@@ -378,7 +516,41 @@ app.delete('/api/order/:id', async (req, res) => {
 +    await db.orders.deleteOne({ _id: req.params.id });
 +    res.sendStatus(200);
 +  });`,
-		refs: ['OWASP-AccessControl', 'CWE-863'],
+		refs: ['OWASP-Auth', 'CWE-863'],
 		tags: ['authorization', 'broken-access-control', 'ownership'],
+	},
+	{
+		id: 'CWE-937',
+		name: 'OWASP Top Ten 2013 Category A2 - Broken Authentication and Session Management',
+		lang: 'nodejavascript',
+		status: 'Deprecated',
+		what: `OWASP Top Ten 2013 A2——身分驗證與工作階段管理破損（Broken Authentication and Session Management）。
+	這是 MITRE 為對應 OWASP 2013 前十名 A2 項目而建立的支柱（Pillar）條目，屬已停用（Deprecated）類別，僅保留歷史
+	對映用途，不建議用來做真實弱點的唯一標籤。它概括的是「驗證身分的機制」與「延續驗證狀態的工作階段」整體品質低落的一整
+	群問題：包含可被猜測或硬編碼的憑證、缺乏逾時的乾糙裝置、未妥善存放的 token、以及缺少多因素與竊取防護。實際修復應改
+	以它旗下的具體子條目對症下藥——CWE-287 不當身分驗證、CWE-522 弱憑證儲存、CWE-613 工作階段不足過期、CWE-640
+	弱的密碼遺忘回收機制。`,
+		problem: `// (支柱示例)：登入成功卻沿用舊 session、把密碼以明文存在資料庫裡——A2 的典型樣態
+if (passwordMatches(user, inputPw)) {
+  // 不重新產生 session id、密碼也以明文存(應以 bcrypt 雜湊)
+  storePasswordPlaintext(user.id, user.password);
+  session_fix(user.id);      // 沿用可被預設的舊 sid，讓固定／掠奪有機可乘
+}`,
+		fixed: `// (支柱示例修法)：散列密碼＋成功登入即換新 session，並設登出使失效
+if (await bcrypt.compare(inputPw, user.hash)) {
+  rotateSessionId(user.id);          // 登入成功立刻換新 sid，丟棄舊的
+  setSessionTimeout(1800);          // 明文→雜湊；session 也會在時限內過期
+  await db.sessions.expireOld(user.id);
+}`,
+		patch: `@@
+  if (passwordMatches(user, inputPw)) {
+-     storePasswordPlaintext(user.id, user.password);
+-     session_fix(user.id);
++     rotateSessionId(user.id);
++     setSessionTimeout(1800);
++     await db.sessions.expireOld(user.id);
+  }`,
+		refs: ['OWASP-A2', 'CWE-937'],
+		tags: ['broken-authn', 'session', 'owasp-2013', 'deprecated'],
 	},
 ];

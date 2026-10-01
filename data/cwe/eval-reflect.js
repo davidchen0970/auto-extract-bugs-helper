@@ -14,9 +14,9 @@ export default [
 		lang: 'javascript',
 		status: 'Complete',
 		what: `動態程式碼求值注入（eval injection ／ 程式碼注入）。把使用者輸入用字串拼接後直接
-丟給 eval()、Function() 建構子或字串形式的 setTimeout／setInterval，
-使用者輸入便會被當成 JavaScript 程式碼執行，等於遠端任意程式碼執行（RCE）。
-建議做法是徹底避免對使用者輸入求值，改用查表對照的允許清單加上正規 API。`,
+	丟給 eval()、Function() 建構子或字串形式的 setTimeout／setInterval，
+	使用者輸入便會被當成 JavaScript 程式碼執行，等於遠端任意程式碼執行（RCE）。
+	建議做法是徹底避免對使用者輸入求值，改用查表對照的允許清單加上正規 API。`,
 		problem: `// 不安全寫法：把使用者輸入拼成字串直接丟給 eval()，輸入就是程式碼
 function applyFilter(code) {
   // 輸入 e.g. "process.mainModule.require('child_process').exec('id')" 即 RCE
@@ -124,6 +124,39 @@ function rpcHandler(req, res) {
 		tags: ['rpc', 'exposed-method', 'privilege', 'api'],
 	},
 	{
+		id: 'CWE-913',
+		name: 'Improper Control of Dynamically-Identified Variables',
+		lang: 'javascript',
+		status: 'Complete',
+		what: `動態識別變數控制不當（Dynamic Variable Evaluation）。程式用使用者可控的字串當做
+	變數／欄位名稱來存取物件或變數，例如 PHP 的 $$var、直接拿輸入當 req.params 或
+	物件鍵寫入、把輸入名詞當設定鍵，卻沒驗證這個名稱是否合法。攻擊者可把輸入設成
+	關鍵或保留欄位、覆蓋內部狀態、觸發原型鏈繼承屬性，甚至藉由「名字即程式碼」的
+	機制達成與 eval 注入近似的效果（尤其在能選到函式並呼叫的場域）。成因是把「鍵／名」
+	與「值」都交給使用者，又沒設允許清單。修法是永遠用對照表把使用者輸入對到固定的
+	內部名稱或鍵，任何指標都用白名單，別讓外部字串直接當變數名走。`,
+		problem: `// 不安全寫法：使用者輸入直接被當屬性鍵寫入物件，可覆蓋骨架或觸發繼承屬性
+function applySetting(obj, key, value) {
+  // key 可以是 "__proto__"、"constructor" 或內部關鍵鍵
+  obj[key] = value;   // 直接以外部字串當欄位名，無任何白名單
+}
+applySetting(config, req.query.key, req.query.value);`,
+		fixed: `// 安全寫法：把使用者輸入對到固定白名單鍵，外部字串永遠不會成為欄位名
+const ALLOWED_KEYS = new Set(['theme', 'locale', 'timeout']);
+function applySetting(obj, providedKey, value) {
+  if (!ALLOWED_KEYS.has(providedKey)) throw new Error('unknown key'); // 擋 __proto__ 等
+  obj[providedKey] = value;
+}
+applySetting(config, req.query.key, req.query.value);`,
+		patch: `@@
+-  obj[key] = value;
++  const ALLOWED_KEYS = new Set(['theme', 'locale', 'timeout']);
++  if (!ALLOWED_KEYS.has(key)) throw new Error('unknown key');
++  obj[key] = value;`,
+		refs: ['OWASP', 'CWE-913'],
+		tags: ['dynamic-variable', 'prototype', 'rce', 'javascript'],
+	},
+	{
 		id: 'CWE-943',
 		name: 'Improper Neutralization of Special Elements in Data Query Logic (NoSQL Injection)',
 		lang: 'nodejavascript',
@@ -157,5 +190,63 @@ function safeFind(filters) {
 +  return db.collection('users').find(parsed, { password: 0 });`,
 		refs: ['OWASP-NoSQLInjection', 'CWE-943'],
 		tags: ['mongodb', 'nosql', 'injection', 'query'],
+	},
+	{
+		id: 'CWE-1321',
+		name: "Improperly Controlled Modification of Object Prototype Attributes ('Prototype Pollution')",
+		lang: 'javascript',
+		status: 'Complete',
+		what: `原型鏈污染（Prototype Pollution）。把使用者可控的「鍵路徑」直接拿去做物件深層寫入或
+	複製，例如以 __proto__、constructor.prototype 或 @@ 開頭的鍵當巢狀欄位鍵，且未檢查這類
+	特殊鍵。攻擊者可改寫所有物件共用的 Object.prototype，替全域注入屬性（如 pollution=true、
+	isAdmin），進而讓多個帳號同時獲得越權，或覆蓋旁路檢查達成 RCE（如改到 process.env、
+	函式參數）。成因是合併／深拷貝前沒攔掉 __proto__ 與 constructor。修法是拒絕以
+	__proto__ / constructor / prototype 開頭的鍵，並用 allowlist 限定可寫入物件名稱與欄位。`,
+		problem: `// 不安全寫法：深合併直接把使用者鍵路徑寫入 target，可污染 Object.prototype
+function merge(target, source) {
+  for (const key in source) {
+    if (typeof source[key] === 'object' && source[key] !== null) {
+      target[key] = target[key] || {};
+      merge(target[key], source[key]);          // __proto__ 鍵路徑一路往下走
+    } else {
+      target[key] = source[key];
+    }
+  }
+}
+// JSON.parse('{"__proto__":{"polluted":true}}') 送進來即污染所有物件
+merge({}, JSON.parse(req.body.config));`,
+		fixed: `// 安全寫法：明確拒絕 __proto__／constructor 開頭的危險鍵，再進行深合併
+function isSafeKey(key) {
+  return key !== '__proto__' && key !== 'constructor' && key !== 'prototype';
+}
+function merge(target, source) {
+  for (const key of Object.keys(source ?? {})) {
+    if (!isSafeKey(key)) continue;            // 擋掉會污染原型鏈的保留鍵
+    if (typeof source[key] === 'object' && source[key] !== null) {
+      target[key] = target[key] || {};
+      merge(target[key], source[key]);
+    } else {
+      target[key] = source[key];
+    }
+  }
+}`,
+		patch: `@@
+  function merge(target, source) {
+-  for (const key in source) {
++  function isSafeKey(key) {
++    return key !== '__proto__' && key !== 'constructor' && key !== 'prototype';
++  }
++  for (const key of Object.keys(source ?? {})) {
++    if (!isSafeKey(key)) continue;
+     if (typeof source[key] === 'object' && source[key] !== null) {
+       target[key] = target[key] || {};
+       merge(target[key], source[key]);
+     } else {
+       target[key] = source[key];
+     }
+   }
+  }`,
+		refs: ['OWASP', 'CWE-1321'],
+		tags: ['prototype-pollution', 'javascript', '__proto__', 'rce'],
 	},
 ];

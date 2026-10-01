@@ -10,6 +10,44 @@
 //   tags    : 英文搜尋標籤
 export default [
 	{
+		id: 'CWE-118',
+		name: "Incorrect Access of Indexable Resource ('Range Error')",
+		lang: 'c',
+		status: 'Complete',
+		what: `範圍錯誤。程式的「可索引資源」不一定是單純的線性陣列：可能是陣列構成的陣列、階層式結構、
+或需要把「元素數」與「位元組數」分清楚。用與資源真實邊界不符的步進或維度去算索引，
+即使「看似在範圍內」，也會指到資源內錯誤的一格或直接越出資源。建議只用一個清楚的維度(元素索引)
+去定址，並讓迴圈的步進與資源的真實結構一致，避免位元組數與元素數互相混用。`,
+		problem: `// 不安全寫法：把「元素數」與「位元組數」搞混，用位元組步進去掃整數陣列
+#include <stddef.h>
+
+static int resources[8];
+size_t used = 0;
+
+void clear_all(void) {
+    // used 是元素數，這裡卻以 sizeof(int) 為步進、範圍也乘上 sizeof(int)
+    for (size_t off = 0; off < used * sizeof(int); off += sizeof(int))
+        resources[off] = 0;                 // 把位元組步進當成陣列索引 => range error
+}`,
+		fixed: `// 安全寫法：直接用元素數當索引，步進一格 = 一個元素，位置永遠一致
+#include <stddef.h>
+
+static int resources[8];
+size_t used = 0;
+
+void clear_all(void) {
+    for (size_t i = 0; i < used; ++i)      // 每步一個元素，範圍就是元素數
+        resources[i] = 0;
+}`,
+		patch: `@@
+-    for (size_t off = 0; off < used * sizeof(int); off += sizeof(int))
+-        resources[off] = 0;
++    for (size_t i = 0; i < used; ++i)
++        resources[i] = 0;`,
+		refs: ['CWE-118'],
+		tags: ['range-error', 'indexable', 'index'],
+	},
+	{
 		id: 'CWE-119',
 		name: 'Improper Restriction of Operations within the Bounds of a Memory Buffer',
 		lang: 'c',
@@ -104,6 +142,41 @@ void copy_name(const char *src) {
 		tags: ['buffer-overflow', 'copy', 'bounds'],
 	},
 	{
+		id: 'CWE-121',
+		name: 'Stack-based Buffer Overflow',
+		lang: 'c',
+		status: 'Complete',
+		what: `堆疊型緩衝區溢位。在函式的區域陣列(存在堆疊)上複製、寫入超出其大小的資料，
+改寫返回位址與呼叫者的變數；是歷史最經典、也最常被用來奪取程式控制流的弱點。一般而言
+是對來源長度沒有任何檢查，或計算容量時忘了替結尾 NUL 留格。建議明確以 cap 限制寫入長度、
+先檢查來源長度再處理，並讓目的緩衝一定以 NUL 結尾。`,
+		problem: `// 不安全寫法：區域陣列 buf 在堆疊上，strcpy 卻可寫滿整個來源
+#include <stdio.h>
+#include <string.h>
+
+void greet(const char *who) {
+    char buf[64];                 // stack buffer
+    strcpy(buf, who);             // who 超過 63 字元 => 改寫返回位址 (stack smashing)
+    printf("hi %s\\n", buf);
+}`,
+		fixed: `// 安全寫法：snprintf 限額寫入、保證 NUL 結尾，超過直接截斷
+#include <stdio.h>
+
+void greet(const char *who) {
+    char buf[64];
+    snprintf(buf, sizeof(buf), "%s", who);   // 寫入上限 = 緩衝大小，不會爆堆疊
+    printf("hi %s\\n", buf);
+}`,
+		patch: `@@
+-    char buf[64];
+-    strcpy(buf, who);
++    char buf[64];
++    snprintf(buf, sizeof(buf), "%s", who);
+     printf("hi %s\\n", buf);`,
+		refs: ['CWE-121'],
+		tags: ['stack', 'buffer-overflow'],
+	},
+	{
 		id: 'CWE-122',
 		name: 'Heap-based Buffer Overflow',
 		lang: 'c',
@@ -143,6 +216,75 @@ void dup_fixed(const char *src) {
 		tags: ['heap', 'buffer-overflow'],
 	},
 	{
+		id: 'CWE-123',
+		name: 'Write-what-where Condition',
+		lang: 'c',
+		status: 'Complete',
+		what: `寫入內容(what)與寫入位置(where)都可能被攻擊者控制。典型是目的位址由未受信任的長度或
+索引推算、內容也來自輸入；攻擊者可藉指定負偏移或超大長度，把一段受控資料寫到任意位址。
+建議的做法是把目的位址固定在受管理的緩衝內，並先校驗任何「參與算出位址」的長度或索引
+都在合法範圍，讓 where 不可受控。`,
+		problem: `// 不安全寫法：目的位址由 len 推算、內容是使用者字串，兩者都可控
+#include <string.h>
+
+static char heap_log[256];
+
+void store(const char *s, size_t len) {
+    // where = heap_log + len (len 可代任意值)
+    // what  = s (內容供攻擊者填)
+    strcpy(heap_log + len, s);            // write-what-where
+}`,
+		fixed: `// 安全寫法：位址固定在緩衝開頭、先用剩餘容量收斂長度，兩邊都受檢驗
+#include <stdio.h>
+
+static char heap_log[256];
+
+void store(const char *s, size_t len) {
+    if (len >= sizeof(heap_log)) return;  // 長度越界先擋，where 固定為 heap_log
+    snprintf(heap_log + len, sizeof(heap_log) - len, "%s", s);
+}`,
+		patch: `@@
+  void store(const char *s, size_t len) {
+-    strcpy(heap_log + len, s);
++    if (len >= sizeof(heap_log)) return;
++    snprintf(heap_log + len, sizeof(heap_log) - len, "%s", s);
+  }`,
+		refs: ['CWE-123'],
+		tags: ['write-what-where', 'arbitrary-write'],
+	},
+	{
+		id: 'CWE-124',
+		name: "Buffer Underwrite ('Buffer Underflow')",
+		lang: 'c',
+		status: 'Complete',
+		what: `緩衝區下寫。寫入位置落到緩衝「開頭之前」，通常是帶號索引為負、或指標往回推過了頭。
+越界方向向左一樣會改寫相鄰資料、瓦解堆疊或堆積結構。建議在寫入前同時檢查下界與上界，
+尤其是把外部帶號值當索引時，要一律攔掉所有負值。`,
+		problem: `// 不安全寫法：i 是帶號型別、由外部控制，負值時 buf[i] 寫到陣列開頭之前
+#include <stdint.h>
+
+int store(int *buf, size_t n, int32_t i, int v) {
+    buf[i] = v;                  // i < 0 => 寫到 buf[0] 之前 => buffer underwrite
+    return 0;
+}`,
+		fixed: `// 安全寫法：先檢查下界(>=0)與上界(< n)，負值與越界一律拒絕
+#include <stdint.h>
+
+int store(int *buf, size_t n, int32_t i, int v) {
+    if (i < 0 || (size_t)i >= n) return -1;   // 同時守住兩端
+    buf[i] = v;
+    return 0;
+}`,
+		patch: `@@
+  int store(int *buf, size_t n, int32_t i, int v) {
++    if (i < 0 || (size_t)i >= n) return -1;
+     buf[i] = v;
+     return 0;
+  }`,
+		refs: ['CWE-124'],
+		tags: ['buffer-underflow', 'underwrite', 'bounds'],
+	},
+	{
 		id: 'CWE-125',
 		name: 'Out-of-bounds Read',
 		lang: 'c',
@@ -178,6 +320,70 @@ int sum(const int *a, size_t len) {
 		tags: ['out-of-bounds-read', 'bounds'],
 	},
 	{
+		id: 'CWE-126',
+		name: "Buffer Over-read ('Buffer Overrun')",
+		lang: 'c',
+		status: 'Complete',
+		what: `緩衝區上讀。以大步進掃描、或在尾端讀固定大小的區塊時，最後一段資料不足所需的組大小，
+仍照完整大小讀取，就會跨過緩衝尾端多讀幾格。越界讀會把相鄰的敏感資料(包括密鑰、堆積內容)
+洩漏給呼叫端。建議每一筆資料都用「確實存在的長度」判定，而非只以起始位置與寫死的步進當範圍。`,
+		problem: `// 不安全寫法：步進 8、只檢查起點，最後一組不完整仍照整組 8 位元組讀
+int parse(const unsigned char *p, size_t avail) {
+    int sum = 0;
+    for (size_t i = 0; i < avail; i += 8)        // avail 不是 8 的整數時
+        sum += p[i] + p[i + 2] + p[i + 4] + p[i + 6];  // i+6 可能 >= avail => over-read
+    return sum;
+}`,
+		fixed: `// 安全寫法：以「一整組都還在範圍內」為繼續條件，不足整組就不讀
+int parse(const unsigned char *p, size_t avail) {
+    int sum = 0;
+    for (size_t i = 0; i + 7 < avail; i += 8)   // 一整組 8 位元組都在 [i, i+7] 內
+        sum += p[i] + p[i + 2] + p[i + 4] + p[i + 6];
+    return sum;
+}`,
+		patch: `@@
+-    for (size_t i = 0; i < avail; i += 8)
+-        sum += p[i] + p[i + 2] + p[i + 4] + p[i + 6];
++    for (size_t i = 0; i + 7 < avail; i += 8)
++        sum += p[i] + p[i + 2] + p[i + 4] + p[i + 6];`,
+		refs: ['CWE-126'],
+		tags: ['buffer-overread', 'overrun', 'bounds'],
+	},
+	{
+		id: 'CWE-128',
+		name: 'Wrap-around Error',
+		lang: 'c',
+		status: 'Complete',
+		what: `無號數值的繞回錯誤。無號型別在「最大值+1」時繞回 0、或減到 0 以下時下溢回最大值。
+若拿繞回後的數值去算長度、索引或容量，會得到與真實值差很多的量，接著用原始大值去讀寫就出越界。
+建議在運算前先判定「值已接近極限」再進行加/減，或改用更寬型別與 checked arithmetic。`,
+		problem: `// 不安全寫法:n==0 時 n-1 下溢成 SIZE_MAX,再拿它當偏移讀取
+#include <stdint.h>
+#include <string.h>
+
+void decode(const unsigned char *in, unsigned char *out, size_t n) {
+    size_t off = n - 1;                    // n==0 => 下溢成 SIZE_MAX (wrap-around)
+    memcpy(out, in + off, 1);             // 從錯得離譜的位置讀取 => 越界
+}`,
+		fixed: `// 安全寫法:運算前先擋掉會觸發繞回的極端值
+#include <stdint.h>
+#include <string.h>
+
+void decode(const unsigned char *in, unsigned char *out, size_t n) {
+    if (n == 0) return;                    // 先處理空緩衝,避免 n-1 下溢
+    size_t off = n - 1;                    // 此時保證不繞回
+    memcpy(out, in + off, 1);
+}`,
+		patch: `@@
+  void decode(const unsigned char *in, unsigned char *out, size_t n) {
++    if (n == 0) return;
+      size_t off = n - 1;
+      memcpy(out, in + off, 1);
+  }`,
+		refs: ['CWE-128', 'CWE-191'],
+		tags: ['wrap-around', 'underflow', 'bounds'],
+	},
+	{
 		id: 'CWE-129',
 		name: 'Improper Validation of Array Index',
 		lang: 'c',
@@ -206,6 +412,41 @@ int value_at(const int *arr, size_t n, int idx) {
  }`,
 		refs: ['CWE-129', 'SEI CERT'],
 		tags: ['array-index', 'bounds'],
+	},
+	{
+		id: 'CWE-130',
+		name: 'Improper Handling of Length Parameter Inconsistency',
+		lang: 'c',
+		status: 'Complete',
+		what: `長度參數與真實資料不一致。協定欄位的 len 與實際緩衝大小、真實剩餘位元組不符，
+程式卻完全照 len 去 memcpy 或讀取。只要 len 比實際大就溢位(寫)、多讀(洩漏)；
+比實際小則處理不足或解析錯位。建議把 len 同時對「宣告容量」與「緩衝內真實剩餘長度」做交叉校驗。`,
+		problem: `// 不安全寫法:m->len 可能超過 out 的容量,仍照它整段拷
+#include <string.h>
+
+void unwrap(struct msg *m) {
+    char out[64];
+    memcpy(out, m->data, m->len);   // m->len > 64 => 拷超過 out => 溢位
+    out[m->len] = 0;
+}`,
+		fixed: `// 安全寫法:len 對目的容量先做校驗,不符長度或不夠存就拒絕
+#include <string.h>
+
+void unwrap(struct msg *m) {
+    char out[64];
+    if (m->len >= sizeof(out)) return;      // len 與真實容量不一致時中止
+    memcpy(out, m->data, m->len);
+    out[m->len] = 0;
+}`,
+		patch: `@@
+  void unwrap(struct msg *m) {
+      char out[64];
++    if (m->len >= sizeof(out)) return;
+      memcpy(out, m->data, m->len);
+      out[m->len] = 0;
+  }`,
+		refs: ['CWE-130'],
+		tags: ['length-parameter', 'inconsistent', 'bounds'],
 	},
 	{
 		id: 'CWE-131',
@@ -308,6 +549,39 @@ void store(char *dst, const char *src) {
  }`,
 		refs: ['CWE-170', 'SEI CERT'],
 		tags: ['null-termination', 'string'],
+	},
+	{
+		id: 'CWE-189',
+		name: 'Numeric Errors',
+		lang: 'c',
+		status: 'Complete',
+		what: `數值錯誤的上位分類，涵蓋整數溢位、下溢、繞回、符號轉換、截斷及型別換算
+(CWE-190/191/195/197…) 等雜類錯誤。共同點是拿「算出錯的數」去當長度、容量或索引，
+最後導向越界讀寫或錯誤的記憶體操作。建議把任何會變成「長度、索引、容量」的計算當成安全邊界：
+用寬型別、checked arithmetic，並在使用前做範圍校驗。`,
+		problem: `// 不安全寫法:store 的 capacity 與 element_count 皆為 32 位元,相乘先溢位
+#include <stdint.h>
+#include <stdlib.h>
+
+void *alloc(uint32_t count, uint32_t elem) {
+    return malloc(count * elem);         // 32 位元相乘溢位 => 配太小 => numeric error
+}`,
+		fixed: `// 安全寫法:運算在寬型別(64 位元)進行並檢查溢位,避免繞回
+#include <stdint.h>
+#include <stdlib.h>
+
+void *alloc(uint32_t count, uint32_t elem) {
+    uint64_t total = (uint64_t)count * elem;   // 寬型別相乘
+    if (total > SIZE_MAX) return NULL;           // 仍會溢位就回報失敗
+    return malloc((size_t)total);
+}`,
+		patch: `@@
+-    return malloc(count * elem);
++    uint64_t total = (uint64_t)count * elem;
++    if (total > SIZE_MAX) return NULL;
++    return malloc((size_t)total);`,
+		refs: ['CWE-189'],
+		tags: ['numeric-error', 'integer', 'arithmetic'],
 	},
 	{
 		id: 'CWE-190',
@@ -414,6 +688,75 @@ void zero_all(short *buf, size_t n) {
         buf[i] = 0;`,
 		refs: ['CWE-193'],
 		tags: ['off-by-one', 'bounds'],
+	},
+	{
+		id: 'CWE-195',
+		name: 'Signed to Unsigned Conversion Error',
+		lang: 'c',
+		status: 'Complete',
+		what: `把帶號值直接轉成無號型別。負數轉無號後變成極大的數(SIZE_MAX、UINT_MAX…)，
+接著被當成長度或容量使用，讓迴圈條件或 memcpy 的長度錯得離譜。建議在轉型之前先檢查原值 >= 0，
+確認數值的方向是預期的，再進行轉型。`,
+		problem: `// 不安全寫法:帶號 slen 為負卻直接轉 size_t,變成極大無號再當長度拷
+#include <string.h>
+
+void copy_len(char *dst, long slen, const char *src) {
+    memcpy(dst, src, (size_t)slen);   // slen<0 => 轉成超大長度 => 越界寫
+}`,
+		fixed: `// 安全寫法:先攔掉負值、再做上界校驗,才轉型與複製
+#include <string.h>
+
+void copy_len(char *dst, size_t dcap, long slen, const char *src) {
+    if (slen < 0) return;                       // 負值先拒絕
+    if ((size_t)slen > dcap) return;            // 再對容量做上界檢查
+    memcpy(dst, src, (size_t)slen);
+}`,
+		patch: `@@
+-  void copy_len(char *dst, long slen, const char *src) {
+-      memcpy(dst, src, (size_t)slen);
++  void copy_len(char *dst, size_t dcap, long slen, const char *src) {
++      if (slen < 0) return;
++      if ((size_t)slen > dcap) return;
++      memcpy(dst, src, (size_t)slen);
+    }`,
+		refs: ['CWE-195'],
+		tags: ['signed-unsigned', 'cast', 'sign'],
+	},
+	{
+		id: 'CWE-197',
+		name: 'Numeric Truncation Error',
+		lang: 'c',
+		status: 'Complete',
+		what: `數值截斷。寬型別(如 32 位元)的值被塞進窄型別(uint16/uint8)，高位位元被丟棄，
+放進去的是被截短的數，與原本宣告或計算所需的長度不符。截斷後的值常被拿來當長度，
+造成複製數量與真實資料長度不一致。建議全程用完整寬度處理長度，避免窄型別在中間截斷。`,
+		problem: `// 不安全寫法:32 位元 len 截成 16 位元,超過 65535 的高位全被砍
+#include <stdint.h>
+#include <string.h>
+
+static char g[65536];
+void store(const char *data, uint32_t len) {
+    uint16_t short_len = (uint16_t)len;   // len > 65535 時高位被截掉
+    memcpy(g, data, short_len);             // 複製長度與 len 不一致
+}`,
+		fixed: `// 安全寫法:不截斷,以完整寬度校驗並限長後直接使用
+#include <stdint.h>
+#include <string.h>
+
+static char g[65536];
+void store(const char *data, uint32_t len) {
+    if (len > sizeof(g)) len = sizeof(g);   // 用完整型別做上限檢查
+    memcpy(g, data, len);                    // 長度與容量一致
+}`,
+		patch: `@@
+  void store(const char *data, uint32_t len) {
+-    uint16_t short_len = (uint16_t)len;
+-    memcpy(g, data, short_len);
++    if (len > sizeof(g)) len = sizeof(g);
++    memcpy(g, data, len);
+  }`,
+		refs: ['CWE-197'],
+		tags: ['truncation', 'narrowing', 'numeric'],
 	},
 	{
 		id: 'CWE-242',
@@ -763,6 +1106,82 @@ void append(char *dst, size_t cap, const char *src) {
 		tags: ['dangerous-function', 'strcat'],
 	},
 	{
+		id: 'CWE-680',
+		name: 'Integer Overflow to Buffer Overflow',
+		lang: 'c',
+		status: 'Complete',
+		what: `整數溢位接著演變成緩衝區溢位。先做一次會溢位的乘法或加法算出「過小」的大小，
+malloc 依此配出過小的緩衝，後面卻仍以未溢位的原始長度整段寫入，就跨過配置區尾端。
+修法是在乘法或加法發生前先驗算可能溢位，並讓配置大小與使用的複製長度相互對齊。`,
+		problem: `// 不安全寫法:nb*sz 溢位成小值 → 緩衝配太小 → memcpy 按原長度寫爆
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+char *make(size_t nb, size_t sz, const char *data) {
+    char *dst = (char *)malloc(nb * sz);   // nb*sz 溢位 => 配太小
+    memcpy(dst, data, nb * sz);            // 仍以原始量寫 => heap 溢位
+    return dst;
+}`,
+		fixed: `// 安全寫法:配置前先做溢位前檢查,兩邊使用同一已驗算的總量
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+char *make(size_t nb, size_t sz, const char *data) {
+    if (nb != 0 && nb > SIZE_MAX / sz) return NULL;   // 溢位前擋掉
+    size_t total = nb * sz;                            // 已證明不溢位
+    char *dst = (char *)malloc(total);
+    if (dst == NULL) return NULL;
+    memcpy(dst, data, total);
+    return dst;
+}`,
+		patch: `@@
+  char *make(size_t nb, size_t sz, const char *data) {
+-    char *dst = (char *)malloc(nb * sz);
+-    memcpy(dst, data, nb * sz);
++    if (nb != 0 && nb > SIZE_MAX / sz) return NULL;
++    size_t total = nb * sz;
++    char *dst = (char *)malloc(total);
++    if (dst == NULL) return NULL;
++    memcpy(dst, data, total);
+      return dst;
+  }`,
+		refs: ['CWE-680', 'CWE-190'],
+		tags: ['integer-overflow', 'buffer-overflow'],
+	},
+	{
+		id: 'CWE-681',
+		name: 'Incorrect Conversion between Numeric Types',
+		lang: 'c',
+		status: 'Complete',
+		what: `型別的換算方式錯誤，使同樣的位元在重新解讀後數值意義大變——例如負數與無號互轉、
+檢查與轉型的次序顛倒。拿換錯的數當索引會一次越界。常見是帶號值在比較或下標時被隱含轉成無號，
+負數沒先在帶號域被攔掉。建議做範圍判定時先檢查負數，再於同一型別內比較與定址。`,
+		problem: `// 不安全寫法:只檢查上界,負數在當索引時被轉成無號而讀到陣列之前
+#include <stddef.h>
+
+uint8_t pick(const uint8_t *m, size_t n, int i) {
+    if (i <= (int)n) return m[i];   // i 負時被當成無號索引 => 讀 m 之前
+    return 0;
+}`,
+		fixed: `// 安全寫法:先擋負值,再以無號同型別校驗上界,才可做索引
+#include <stddef.h>
+
+uint8_t pick(const uint8_t *m, size_t n, int i) {
+    if (i < 0 || (size_t)i >= n) return 0;   // 負與越界一併拒絕
+    return m[i];
+}`,
+		patch: `@@
+  uint8_t pick(const uint8_t *m, size_t n, int i) {
+-    if (i <= (int)n) return m[i];
++    if (i < 0 || (size_t)i >= n) return 0;
+      return m[i];
+  }`,
+		refs: ['CWE-681'],
+		tags: ['numeric-conversion', 'cast', 'index'],
+	},
+	{
 		id: 'CWE-682',
 		name: 'Incorrect Calculation',
 		lang: 'c',
@@ -828,6 +1247,107 @@ int ratio(const int *a, size_t len) {
 		tags: ['exceptional-condition', 'division-by-zero'],
 	},
 	{
+		id: 'CWE-762',
+		name: 'Mismatched Memory Management Routines',
+		lang: 'cpp',
+		status: 'Complete',
+		what: `記憶體管理例程配錯對。用 new 配的記憶體卻用 free()、malloc 配的用 delete、
+甚至 new[] 配的錯用經由錯誤釋放例程等。每個分配器管理自己的標頭與釋放方式，混用會把堆積管理結構
+寫壞、崩潰，甚至造出可利用的缺陷。建議讓配置與釋放成對：new→delete、new[]→delete[]、
+malloc/calloc/realloc→free，絕不交錯使用不同來源的例程。`,
+		problem: `// 不安全寫法:new[] 配的陣列用 malloc 家族的 free() 釋放 => 釋放方式不符
+#include <cstdlib>
+
+void run(size_t n) {
+    int *p = new int[n];          // C++ new[]
+    /* ... 使用 ... */
+    free(p);                      // 應為 delete[] p => mismatched routine
+}`,
+		fixed: `// 安全寫法:成對使用 new[] / delete[]（或乾脆統一用 malloc/free）
+#include <cstdlib>
+
+void run(size_t n) {
+    int *p = new int[n];
+    /* ... 使用 ... */
+    delete[] p;                   // 與 new[] 成對
+}`,
+		patch: `@@
+     int *p = new int[n];
+     /* ... 使用 ... */
+-    free(p);
++    delete[] p;`,
+		refs: ['CWE-762'],
+		tags: ['mismatched-memory', 'free-delete'],
+	},
+	{
+		id: 'CWE-763',
+		name: 'Release of Invalid Pointer or Reference',
+		lang: 'c',
+		status: 'Complete',
+		what: `對無效指標做釋放。該指標不是 malloc/calloc/realloc 回傳的原起點——例如指向配置的
+「中間」、早已被釋放、或根本不是動態記憶體——卻交給 free()。釋放器只認得它發出去的區塊起點，
+傳錯就破壞管理結構。建議永遠保存原始分配回傳的指標，只對那一個做釋放。`,
+		problem: `// 不安全寫法:把指向配置「中間」的指標 free,而非配置開頭
+#include <stdlib.h>
+
+void write_msg(char *base, const char *body) {
+    char *payload = base + 4;        // 指向 base 區塊的內部
+    /* 使用 payload ... */
+    free(payload);                    // 不是配置起點 => release of invalid pointer
+}`,
+		fixed: `// 安全寫法:只 free 原始配置回傳的起點(整個區塊)
+#include <stdlib.h>
+
+void write_msg(char *base, const char *body) {
+    /* 使用 base、base+4 ... */
+    free(base);                      // 釋放時回到配置開頭
+}`,
+		patch: `@@
+  void write_msg(char *base, const char *body) {
+      char *payload = base + 4;
+      /* 使用 payload ... */
+-    free(payload);
++    free(base);
+  }`,
+		refs: ['CWE-763'],
+		tags: ['invalid-pointer', 'free'],
+	},
+	{
+		id: 'CWE-785',
+		name: 'Use of Path Manipulation Function without Maximum-sized Buffer',
+		lang: 'c',
+		status: 'Complete',
+		what: `組出路徑時用了不支援上限的函式(strcpy/strcat)去填一個固定大小的陣列。目錄與檔名多層
+串起後很容易超過陣列或路徑上限(PATH_MAX)而溢位。建議改用帶容量上限的 snprintf，並檢查回傳值
+確認沒有被截斷、路徑完整。`,
+		problem: `// 不安全寫法:用 strcpy/strcat 逐步組路徑,全程沒有大小上限
+#include <string.h>
+
+void build_path(char *out, const char *dir, const char *file) {
+    strcpy(out, dir);     // out 是多大的緩衝無人知道
+    strcat(out, "/");
+    strcat(out, file);    // 路徑超過 => 溢位
+}`,
+		fixed: `// 安全寫法:snprintf 帶上限且含結尾 NUL,回傳值判定是否被截斷
+#include <stdio.h>
+
+void build_path(char *out, size_t cap, const char *dir, const char *file) {
+    int n = snprintf(out, cap, "%s/%s", dir, file);
+    if (n < 0 || (size_t)n >= cap) return;   // 截斷視為失敗直接返回
+}`,
+		patch: `@@
+-  void build_path(char *out, const char *dir, const char *file) {
+-      strcpy(out, dir);
+-      strcat(out, "/");
+-      strcat(out, file);
++  void build_path(char *out, size_t cap, const char *dir, const char *file) {
++      int n = snprintf(out, cap, "%s/%s", dir, file);
++      if (n < 0 || (size_t)n >= cap) return;
+    }`,
+		refs: ['CWE-785'],
+		tags: ['path', 'strcat', 'bounds'],
+	},
+	{
 		id: 'CWE-787',
 		name: 'Out-of-bounds Write',
 		lang: 'c',
@@ -889,5 +1409,127 @@ unsigned char read_last(const unsigned char *b, size_t n) {
  }`,
 		refs: ['CWE-788'],
 		tags: ['past-end', 'bounds'],
+	},
+	{
+		id: 'CWE-805',
+		name: 'Buffer Access with Incorrect Length Value',
+		lang: 'c',
+		status: 'Complete',
+		what: `位址正確但長度給錯。memcpy/read 的目的區位址對，可是長度引數大於目的實際容量
+(或大於來源已用長度)，仍是越界讀寫。與 CWE-119 不同，這裡問題就在「長度」本身的數值與真實容量
+不一致。建議在每個複製點把長度與真實容量同步校驗，保證長度絕不超過容量。`,
+		problem: `// 不安全寫法:dst 位址正確,但 n 是呼叫端給的,可能大於 cap
+#include <string.h>
+
+void store(char *dst, size_t cap, const char *src, size_t n) {
+    memcpy(dst, src, n);        // n > cap => 寫到 dst 之後 => OOB write
+}`,
+		fixed: `// 安全寫法:先把長度收斂到容量內,長度與真實空間一致後才複製
+#include <string.h>
+
+void store(char *dst, size_t cap, const char *src, size_t n) {
+    if (n > cap) n = cap;      // length 對齊真實容量
+    memcpy(dst, src, n);
+}`,
+		patch: `@@
+  void store(char *dst, size_t cap, const char *src, size_t n) {
+-    memcpy(dst, src, n);
++    if (n > cap) n = cap;
++    memcpy(dst, src, n);
+  }`,
+		refs: ['CWE-805'],
+		tags: ['incorrect-length', 'bounds', 'memcpy'],
+	},
+	{
+		id: 'CWE-823',
+		name: 'Use of Out-of-range Pointer Offset',
+		lang: 'c',
+		status: 'Complete',
+		what: `指標偏移超出其有效範圍再解參考。指標在合法陣列上加上過大或為負的 offset，
+得到指到陣列外的指標，再對該指標讀寫就是越界。建議在做指標算術前先確認 offset 落在 [0, n) 之內，
+或改用「索引 + 界限檢查」取代裸指標算術。`,
+		problem: `// 不安全寫法:off 由外部給,未校驗就直接以 *(a + off) 解參考
+#include <stddef.h>
+
+int read_at(const int *a, size_t n, long off) {
+    return *(a + off);          // off 為負或 >= n => 指到陣列外再解參考
+}`,
+		fixed: `// 安全寫法:解參考前先校驗 off 的上下界(等同再轉成索引)
+#include <stddef.h>
+
+int read_at(const int *a, size_t n, long off) {
+    if (off < 0 || (size_t)off >= n) return -1;   // 範圍外直接拒絕
+    return a[off];                                  // 以索引代替裸指標偏移
+}`,
+		patch: `@@
+  int read_at(const int *a, size_t n, long off) {
+-    return *(a + off);
++    if (off < 0 || (size_t)off >= n) return -1;
++    return a[off];
+  }`,
+		refs: ['CWE-823'],
+		tags: ['pointer-offset', 'out-of-range', 'bounds'],
+	},
+	{
+		id: 'CWE-839',
+		name: 'Numeric Range Comparison Without Minimum Check',
+		lang: 'c',
+		status: 'Complete',
+		what: `範圍檢查只做上限、漏了最小(下界)檢查。帶號值拿來當索引時若只寫 i <= 上限，
+負數也照樣通過，接著以負索引越界。建議上下界「同時」校驗：先擋負值再驗上界，
+兩者缺一都算範圍校驗不完全。`,
+		problem: `// 不安全寫法:只檢查上界(i <= max),負數仍會通過且成為負索引
+uint8_t fetch(const uint8_t *tbl, size_t n, int i) {
+    if (i <= (int)n)             // 負數也 <= 上限 => 放行
+        return tbl[i];            // i<0 => 讀到 tbl 之前
+    return 0;
+}`,
+		fixed: `// 安全寫法:下限(i>=0)與上限(i<n)一起檢查才算完整
+uint8_t fetch(const uint8_t *tbl, size_t n, int i) {
+    if (i < 0 || (size_t)i >= n) return 0;   // 上下界都守住
+    return tbl[i];
+}`,
+		patch: `@@
+  uint8_t fetch(const uint8_t *tbl, size_t n, int i) {
+-    if (i <= (int)n)
+-        return tbl[i];
++    if (i < 0 || (size_t)i >= n) return 0;
++    return tbl[i];
+  }`,
+		refs: ['CWE-839'],
+		tags: ['range-check', 'bounds', 'negative-index'],
+	},
+	{
+		id: 'CWE-1285',
+		name: 'Improper Validation of Specified Index in Product',
+		lang: 'c',
+		status: 'Complete',
+		what: `對產品指定索引的校驗不嚴謹。常見是允許「正好等於陣列長度」的特例，讓 one-past-the-end
+的索引溜過去而讀寫到緩衝結尾之後那一格。建議校驗採用嚴格的半開區間 [0, len)，
+把「等於 len」與「大於 len」視為同樣的越界一起拒絕。`,
+		problem: `// 不安全寫法:允許 i == MAX 的特例,而 MAX 正是元素個數 => one-past-the-end
+#define MAX 16
+static int slots[MAX];
+
+int get_slot(unsigned i) {
+    if (i <= MAX) return slots[i];   // i==MAX 時讀的是陣列結尾之後
+    return -1;
+}`,
+		fixed: `// 安全寫法:用嚴格的 [0, MAX),等於 MAX 一律視為越界
+#define MAX 16
+static int slots[MAX];
+
+int get_slot(unsigned i) {
+    if (i >= MAX) return -1;        // 只允許 [0,16)
+    return slots[i];
+}`,
+		patch: `@@
+  int get_slot(unsigned i) {
+-    if (i <= MAX) return slots[i];
++    if (i >= MAX) return -1;
+      return slots[i];
+  }`,
+		refs: ['CWE-1285'],
+		tags: ['index-validation', 'one-past-end', 'bounds'],
 	},
 ];

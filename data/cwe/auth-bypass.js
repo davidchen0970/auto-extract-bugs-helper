@@ -1,7 +1,7 @@
 // CWE chunk — category: Authentication Bypass & Alternative Path / Trust.
 //   what    : 簡短、繁中、白話+技術描述（(#) 弱點是什麼)
-//   problem : 「壞的寫法」程式片段（(#) 問題長怎樣)
-//   fixed   : 「修好的寫法」程式片段（(#) 解完會長怎樣)
+//   problem : 「壞的寫法」程式片段（(#) 問題長怎樣）
+//   fixed   : 「修好的寫法」程式片段（(#) 解完會長怎樣）
 //   patch   : problem → fixed 的統一 diff 文字（(#) 範例 patch)
 //   lang    : 此條範例主力語言，依 CWE 類別選擇
 //   status  : Complete | Incomplete | Deprecated
@@ -75,6 +75,71 @@ app.delete('/api/orders/:id', requireAuth, async (req, res) => {  // 改刪除�
 		tags: ['auth-bypass', 'alternate-path', 'missing-auth'],
 	},
 	{
+		id: 'CWE-289',
+		name: 'Authentication Bypass by Alternate Name',
+		lang: 'nodejavascript',
+		status: 'Complete',
+		what: `以「替代名稱」繞過身分驗證（Authentication Bypass by Alternate Name）。驗證把「使用者名稱」一路當成身分的
+	唯一錨點，卻只對其中一種名稱寫法做檢查，而實際查詢或比對身分時接受的又是另一種寫法。例如登入封鎖只比對
+	「使用者名稱」欄位，但後端同時以 mail 或 user_alias 當可登入的別名；或對大小寫、尾隨空白、Unicode 正規化的變體
+	處理前後不一致。於是攻擊者用同一帳號的「另一種名字」（別名、大小寫變體）送進授權邏輯，就繞過了以「名稱字串」為
+	基準建立的封鎖。正確做法是指定單一、不可變、且已徹底正規化（大小寫、空白、編碼都統一）的身份識別子，所有驗證與
+	實際查詢一致使用同一個來源名稱，不給第二種名字的旁路。`,
+		problem: `// 不安全寫法：封鎖名單比對「username」，但唯一可以登入的起點卻又可吃 mail
+const BANNED = ['mallory'];
+function blocked(login) {
+  return BANNED.some((b) => b === login);          // 只比對會傳給它的那一種寫法
+}
+app.post('/login', (req, res) => {
+  const login = req.body.alias || req.body.username;     // 攻擊者改帶 name=mallory@x.com 就不同字串
+  if (blocked(login)) return res.sendStatus(403);      // 但底下照樣靠任意 login 欄位去查
+  const user = db.users.where({ username: login }).or({ email: login }).first(); // 兩支 alias 都能過
+  ...issueSession(user);
+});`,
+		fixed: `// 安全寫法：鎖定單一被正規化的主識別子，驗證與查詢都用同一個來源、同一組規則
+function canonical(login) {
+  if (!login) return null;
+  return String(login).trim().toLowerCase();             // 大小寫／空白先統一
+}
+async function principal(login, type) {
+  if (type !== 'username') return null;                 // 只接受一種身份辨識方式
+  return db.users.findByUsername(canonical(login));
+}
+app.post('/login', (req, res) => {
+  const u = await principal(canonical(req.body.username), 'username');
+  if (!u || BANNED.some((b) => canonical(b) === canonical(u.username)))
+    return res.sendStatus(403);
+  verifyPassword(u, req.body.password);
+});`,
+		patch: `@@
+-  const BANNED = ['mallory'];
+-  function blocked(login) {
+-    return BANNED.some((b) => b === login);
+-  }
+-  app.post('/login', (req, res) => {
+-    const login = req.body.alias || req.body.username;
+-    if (blocked(login)) return res.sendStatus(403);
+-    const user = db.users.where({ username: login }).or({ email: login }).first();
+-    ...issueSession(user);
+-  });
++  function canonical(login) {
++    if (!login) return null;
++    return String(login).trim().toLowerCase();
++  }
++  async function principal(login, type) {
++    if (type !== 'username') return null;
++    return db.users.findByUsername(canonical(login));
++  }
++  app.post('/login', async (req, res) => {
++    const u = await principal(canonical(req.body.username), 'username');
++    if (!u || BANNED.some((b) => canonical(b) === canonical(u.username)))
++      return res.sendStatus(403);
++    verifyPassword(u, req.body.password);
++  });`,
+		refs: ['OWASP-Auth', 'CWE-289'],
+		tags: ['auth-bypass', 'alternate-name', 'alias'],
+	},
+	{
 		id: 'CWE-290',
 		name: 'Authentication Bypass by Spoofing',
 		lang: 'python',
@@ -139,6 +204,48 @@ def admin_cmd():
 		tags: ['spoofing', 'trusted-header', 'ip-trust'],
 	},
 	{
+		id: 'CWE-294',
+		name: 'Authentication Bypass by Capture-replay',
+		lang: 'python',
+		status: 'Complete',
+		what: `以擷取-重放（Capture-replay）繞過身分驗證。身分驗證依賴的憑證或協定消息本身可以被攻擊者離線攔截，之後
+	原封不動地以假主體的身分重放一遍而照樣通過——通常是因為單次通行碼／挑戰沒有綁定會話與隨機性，或身分交換仰賴可被
+	側錄的固定料（固定 PIN、被重播的 HMAC／憑證、未綁客戶端的通行碼）。攻擊者不必知道秘密內容，只要錄手一段成功交換便能
+	重現。正確做法是在每一輪驗證導入「不可重用」的隨機挑戰（nonce）與時間戳，把回應跟當下的挑戰、時序、會話上下文綁在
+	一起，並在驗證端記錄已用的 nonce、拒絕重複者，從根切斷重放。`,
+		problem: `# 不安全寫法：挑戰值固定、回應不含亂數，攔截到就能原封重放換身分
+def handshake(peer):
+    # challenge 每次都一樣，回應也不綁當次隨機性
+    token = digest(PEER_KEY)               # 可被側錄的固定 result
+    result = peer.respond(token)
+    return result == expect(PEER_KEY)      # 錄一次就能 replay`,
+		fixed: `# 安全寫法：每輪都發新 random nonce，回應綁定 nonce 且驗證端記下並拒絕重複
+import secrets, hmac
+seen = set()
+def handshake(peer):
+    nonce = secrets.token_bytes(16)        # 每次新的不可重用挑戰
+    if nonce in seen or has_expired(nonce):
+        return False
+    seen.add(nonce)                      # 用過的就拒絕再重放
+    msg = nonce + b'|' + peer.id()
+    mac = hmac.new(SEED, msg, 'sha256').digest()     # MAC 綁定當次 nonce
+    return hmac.compare_digest(peer.respond(mac), mac)`,
+		patch: `@@
+  def handshake(peer):
+-     token = digest(PEER_KEY)
+-     result = peer.respond(token)
+-     return result == expect(PEER_KEY)
++     nonce = secrets.token_bytes(16)
++     if nonce in seen or has_expired(nonce):
++         return False
++     seen.add(nonce)
++     msg = nonce + b'|' + peer.id()
++     mac = hmac.new(SEED, msg, 'sha256').digest()
++     return hmac.compare_digest(peer.respond(mac), mac)`,
+		refs: ['OWASP-Replay', 'CWE-294'],
+		tags: ['capture-replay', 'replay', 'nonce'],
+	},
+	{
 		id: 'CWE-302',
 		name: 'Authentication Bypass by Assumed-Immutable Data',
 		lang: 'nodejavascript',
@@ -182,6 +289,134 @@ app.get('/api/config', requireAdmin, (req, res) => {
 +  });`,
 		refs: ['OWASP-DataValidation', 'CWE-302'],
 		tags: ['assumed-immutable', 'client-state', 'privilege-flag'],
+	},
+	{
+		id: 'CWE-305',
+		name: 'Authentication Bypass by Primary Weakness',
+		lang: 'nodejavascript',
+		status: 'Complete',
+		what: `因「主要機制本身存在弱點」而繞過身分驗證（Authentication Bypass by Primary Weakness）。系統本來設置了一套
+	主要的身分驗證機制，卻因這套機制在根本處就脆弱，以致可整體繞過——例如伺服器對輸入只做「部分比對」（只查長度不查
+	內容、只查結尾不查開頭）、把驗證身分的密碼與不該混淆的欄位攪在一起、或驗證流程前開了不該開的通道，使未驗證者仍能
+	抵達已驗證資源。因為問題在主的驗證邏輯，靠外圍補丁無法根治。正確做法是主驗證機制整體重寫：採「完整比對＋白名單」，
+	身分判定由伺服器端以密碼驗證與 session 共同完成，並確保不存在任何跳過主驗證即可觸及的受保護資源。`,
+		problem: `// 不安全寫法：驗證只比「結尾」，且「已登入」旗標可由 query 決定，主要機制故有根本洞
+app.get('/api/account', (req, res) => {
+  const pw = req.query.pw || '';
+  if (pw.endsWith('secret')) return serveAccount(req);      // 只查結尾，{x}secret 也算過
+  if (req.query.logged_in === '1') return serveAccount(req); // 再者還可直接聲明已登入
+  res.sendStatus(403);
+});`,
+		fixed: `// 安全寫法：主要驗證改為完整比對、以伺服器端 session 為憑，不存在旁路
+app.post('/api/login', async (req, res) => {
+  const u = await db.users.findByName(req.body.username);
+  if (!u || !(await bcrypt.compare(req.body.password, u.hash)))
+    return res.sendStatus(403);                       // 完整密碼比對(不是尾碼)
+  req.session.uid = u.id;
+  res.sendStatus(204);
+});
+app.get('/api/account', async (req, res) => {
+  if (!req.session || !req.session.uid) return res.sendStatus(403); // 只看 session
+  res.json(await db.users.profile(req.session.uid));
+});`,
+		patch: `@@
+-  app.get('/api/account', (req, res) => {
+-    const pw = req.query.pw || '';
+-    if (pw.endsWith('secret')) return serveAccount(req);
+-    if (req.query.logged_in === '1') return serveAccount(req);
+-    res.sendStatus(403);
+-  });
++  app.post('/api/login', async (req, res) => {
++    const u = await db.users.findByName(req.body.username);
++    if (!u || !(await bcrypt.compare(req.body.password, u.hash)))
++      return res.sendStatus(403);
++    req.session.uid = u.id;
++    res.sendStatus(204);
++  });
++  app.get('/api/account', async (req, res) => {
++    if (!req.session || !req.session.uid) return res.sendStatus(403);
++    res.json(await db.users.profile(req.session.uid));
++  });`,
+		refs: ['OWASP-Auth', 'CWE-305'],
+		tags: ['auth-bypass', 'primary-weakness', 'partial-compare'],
+	},
+	{
+		id: 'CWE-374',
+		name: 'Passing Mutable Objects to an Untrusted Method',
+		lang: 'java',
+		status: 'Complete',
+		what: `把可變（mutable）物件交傳給不受信任的方法（Passing Mutable Objects to an Untrusted Method）。產品在把工作
+	交給不受信任的程式碼（外掛、擴充、非同等的服務或外包元件）時，直接把令它仍然可被修改的內部物件引用交出去。由於物件
+	可變，被交的一方可以反向改動呼叫者仍一直視為可信的內部狀態，或從該物件的巢狀欄位中竊走不該被看到的資料——即使本意
+	只是要給對方「唯讀」或某一欄。正確做法是在信任邊界處「複製再交」：只把可變狀態複製成副本或序列化後的新實體交出去，
+	或著窄化成唯讀介面／防禦性拷貝後才傳給不可信區域，別讓活生生的內部參照直接落進他人手中。`,
+		problem: `// 不安全寫法：把帶有內部變異能力的 ArrayList 原樣交給第三方 plug-in
+public void notifyAuditors(Plugin p) {
+    // audits 同時也是內部審核清單；直接交出去，plug-in 就能 add/remove 篡改內部狀態
+    p.onAudit(audits);
+}
+void onAudit(List<String> list) {
+    list.clear();            // 第三方拿到的就是内部的可變引用，一 call 就清空内部清單
+    list.addAll(fake);
+}`,
+		fixed: `// 安全寫法：交付前做防禦性拷貝，對方動的副本，動不到內部狀態
+public void notifyAuditors(Plugin p) {
+    List<String> immutableCopy = Collections.unmodifiableList(new ArrayList<>(audits));
+    p.onAudit(immutableCopy);          // plug-in 只能唯讀看，連清空都拋 UnsupportedOperationException
+}
+void onAudit(List<String> list) {
+    // list 已是快照且不可改：this.audits 完全不受影響
+    summarize(list);
+}`,
+		patch: `@@
+   public void notifyAuditors(Plugin p) {
+-      p.onAudit(audits);
++      List<String> immutableCopy = Collections.unmodifiableList(new ArrayList<>(audits));
++      p.onAudit(immutableCopy);
+   }
+   void onAudit(List<String> list) {
+-      list.clear();
+-      list.addAll(fake);
++      summarize(list);
+   }`,
+		refs: ['OWASP-DataValidation', 'CWE-374'],
+		tags: ['mutable-object', 'trusted-boundary', 'defensive-copy'],
+	},
+	{
+		id: 'CWE-501',
+		name: 'Trust Boundary Violation',
+		lang: 'python',
+		status: 'Complete',
+		what: `信賴界限違反（Trust Boundary Violation）。程式把「可信」與「不可信」之間的界線畫錯，或處理資料時讓不可信的
+	資料直接「升級」成可信區而被使用，卻沒任何過渡。信賴界限的用途就是讓資料安全地由不可信側跨到可信側——過程需要驗證、
+	消毒與正常化。若界線畫在錯誤位置、或只靠一個不檢查的內建轉換（直接把未消毒輸入放行給敏感 API），等同讓攻擊者把注入料
+	當成已經「受信任」的輸入用於決策與執行。正確做法是對每個資料標明其信賴來源，界定一個真實的檢查點（驗證＋消毒），
+	任何跨越界線的資料都要先在該處正規化、捨弃非法內容，之後才准進入可信區。`,
+		problem: `# 不安全寫法：界線畫錯位置——外部 query 直接當成「已受信任」輸入，沒有檢查點
+def lookup(req):
+    name = req.args['name']                       # 不可信側，直接進入可信執行區
+    cmd = ["grep", name, "/var/db/index.txt"]   # 沒有驗證／消毒即拿去做決策與執行
+    return subprocess.check_output(cmd)`,
+		fixed: `# 安全寫法：在邊界設立檢查點，驗證＋黑名單/白名單消毒後才升為可信輸入
+import re
+def lookup(req):
+    raw = req.args.get('name', '')
+    if not re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', raw):  # 邊界白名單驗證
+        raise ValueError('untrusted name rejected at boundary')
+    name = raw                                        # 才承認它是可信輸入
+    return grep_subprocess(name, "/var/db/index.txt")   # 且以參數化方式使用`,
+		patch: `@@
+   def lookup(req):
+-      name = req.args['name']
+-      cmd = ["grep", name, "/var/db/index.txt"]
+-      return subprocess.check_output(cmd)
++      raw = req.args.get('name', '')
++      if not re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', raw):
++          raise ValueError('untrusted name rejected at boundary')
++      name = raw
++      return grep_subprocess(name, "/var/db/index.txt")`,
+		refs: ['OWASP-InputValidation', 'CWE-501'],
+		tags: ['trust-boundary', 'untrusted-input', 'validation'],
 	},
 	{
 		id: 'CWE-602',
@@ -235,7 +470,7 @@ app.post('/api/grant/:target', requireAdmin, async (req, res) => {
 +    await db.users.updateRole(req.params.target, 'admin');
 +    res.sendStatus(200);
 +  });`,
-		refs: ['OWASP-FrontEndSecurity', 'CWE-602'],
+		refs: ['OWASP-FrontEnd Security', 'CWE-602'],
 		tags: ['client-side-security', 'gui', 'server-side-enforcement'],
 	},
 ];

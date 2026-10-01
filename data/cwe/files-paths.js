@@ -53,6 +53,235 @@ int open_config(int dirfd, const char *name) {
 		tags: ['symlink', 'toctou', 'link-following', 'openat', 'race'],
 	},
 	{
+		id: 'CWE-61',
+		name: 'UNIX Symbolic Link (Symlink) Following',
+		lang: 'c',
+		status: 'Complete',
+		what: `UNIX 符號連結（symlink）跟隨攻擊。程式要開啟或寫入某個檔時，只憑「路徑名稱」就把
+	open()／openat() 交出去，而不檢查這個路徑的某一層是不是以符號連結指向別處。攻擊者若能在該路徑的
+	某一個目錄寫入（常見於共用的可寫暫存目錄，例如 /tmp），就能預先把這個「檔名」佈成一條指到受害者
+	本無權讀寫的目標（如 /etc/shadow、其它使用者的設定檔）的連結；程式一 open，就照著連結把讀寫動作
+	送到目標身上，造成任意檔被覆寫、讀取或建立，甚至配合 TOCTOU 在檢查與使用之間置換。CWE-61 與
+	CWE-59 的差別在於 61 聚焦「UNIX symlink 本身被跟隨」，而 59 泛指一切 link-following 的 TOCTOU
+	空窗。修法是使用 O_NOFOLLOW 拒絕跟隨最後一層、對已開啟的 fd 用 fstat 驗證目標身分，或把暫存
+	檔放在程式專屬、不可被他人寫入的目錄裡。`,
+		problem: `// 不安全寫法：在共享可寫目錄用預測得到的名字直接 open,最後一層可被擺成 symlink
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+
+int save_pid(const char *tmpdir) {
+    char path[512];
+    snprintf(path, sizeof path, "%s/pid.txt", tmpdir);  // tmpdir 常見是 /tmp 這類共寫空間
+    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0) return -1;
+    dprintf(fd, "%d\\n", getpid());      // 若 path 被換成指向 /etc/shadow 的 symlink,就寫到那
+    close(fd);
+    return 0;
+}`,
+		fixed: `// 安全寫法：O_NOFOLLOW + O_EXCL 讓核心拒絕任何既存檔與符號連結,寫進「真正新開」的檔
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+
+int save_pid(const char *tmpdir) {
+    char path[512];
+    snprintf(path, sizeof path, "%s/pid.txt", tmpdir);
+    // O_EXCL: 已存在就失敗;O_NOFOLLOW: 對最後一層 symlink 直接 ELOOP 拒絕,不跟隨
+    int fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0644);
+    if (fd < 0) return -1;
+    dprintf(fd, "%d\\n", getpid());
+    close(fd);
+    return 0;
+}`,
+		patch: `@@
+-    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
++    int fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0644);
+     if (fd < 0) return -1;`,
+		refs: ['CWE-61', 'CWE-59', 'SEI CERT'],
+		tags: ['symlink', 'follow', 'O_NOFOLLOW', 'tmp', 'race', 'link'],
+	},
+	{
+		id: 'CWE-65',
+		name: 'Windows Hard Link',
+		lang: 'c',
+		status: 'Complete',
+		what: `Windows 硬連結（Hard Link）攻擊。攻擊者若能在某目錄裡建立一個 hard link，可以把同一個
+	檔以「另一個名字」同時出現在受控位置;程式若以使用者可控路徑直接 CreateFileW() 覆寫或刪除，就會
+	透過硬連結作用到它本不打算碰的原始檔上。與 CWE-59／61 的符號連結不同，Windows 硬連結沒有
+	reparse point，O_NOFOLLOW 這類「不跟隨連結」的旗標對它沒有作用，攔得住 symlink 的檢查往往
+	攔不住 hard link。修法是針對「已開啟的檔案物件」做身分驗證：用 GetFileInformationByHandle()
+	讀出檔案的 volume serial ＋ file index，確認它落在受控目錄且 nNumberOfLinks 為 1，任何一條檔有
+	多個連結都拒絕操作，避免透過第二個名字誤傷原始檔。`,
+		problem: `// 不安全寫法：接受使用者可控路徑直接 CreateFileW 覆寫,身分類檢查對 hard link 失效
+#include <windows.h>
+
+int overwrite(const wchar_t *userpath) {
+    // 攻擊者可在寫得進的目錄建一個 hard link,把 "GameData.dat" 別名指到受害者的設定檔
+    HANDLE h = CreateFileW(userpath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                          NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) return -1;
+    DWORD n = 0;
+    WriteFile(h, (BYTE*)"pwn", 3, &n, NULL);   // 覆寫到的可能是指向的原始檔
+    CloseHandle(h);
+    return 0;
+}`,
+		fixed: `// 安全寫法：開啟後用檔案物件身分檢查;有「多個硬連結」的檔一律拒絕操作
+#include <windows.h>
+
+int overwrite_safe(const wchar_t *full) {
+    HANDLE h = CreateFileW(full, GENERIC_READ | GENERIC_WRITE, 0,
+                          NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    BY_HANDLE_FILE_INFORMATION fi;
+    if (!GetFileInformationByHandle(h, &fi)) { CloseHandle(h); return -1; }
+    // nNumberOfLinks > 1 代表同一個檔另有多個名字(hard link),拒絕以免誤寫到非預期對象
+    if (fi.nNumberOfLinks > 1) { CloseHandle(h); return -1; }
+    DWORD n = 0;
+    WriteFile(h, (BYTE*)"pwn", 3, &n, NULL);
+    CloseHandle(h);
+    return 0;
+}`,
+		patch: `@@
+-    HANDLE h = CreateFileW(userpath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+-                          NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+-    if (h == INVALID_HANDLE_VALUE) return -1;
++    // #固定基底、僅純檔名;並在開啟後做身分檢查
++    HANDLE h = CreateFileW(full, GENERIC_READ | GENERIC_WRITE, 0,
++                          NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
++    BY_HANDLE_FILE_INFORMATION fi;
++    if (!GetFileInformationByHandle(h, &fi)) { CloseHandle(h); return -1; }
++    if (fi.nNumberOfLinks > 1) { CloseHandle(h); return -1; }   // 多硬連結 => 拒
+     DWORD n = 0;
+     WriteFile(h, (BYTE*)"pwn", 3, &n, NULL);`,
+		refs: ['CWE-65', 'SEI CERT'],
+		tags: ['hard-link', 'windows', 'link', 'file-identity', 'nNumberofLinks'],
+	},
+	{
+		id: 'CWE-66',
+		name: 'Improper Handling of File Names that Identify Virtual Resources',
+		lang: 'c',
+		status: 'Complete',
+		what: `不當處理「指向虛擬資源」的檔名。有些檔名並不一定真的代表一棵檔案群裡的一般檔案，
+	而會解析到作業系統的特殊虛擬資源：Windows 的保留裝置名稱（NUL、CON、AUX、COM1）、Alternate
+	Data Stream（檔名含 :）、以及 Unix 的 /dev、/proc 等特殊檔。程式若只憑使用者給的「名稱」就一路
+	照字面去建立、讀寫或刪除，攻擊者就能塞進這類名字，讓複製／刪除／下載動作作用在一個「不是真的
+	普通檔」的裝置或資料流上——例如把內容「寫入」名為 NUL 的檔案其實是丟進黑洞、把程式誤導去讀取
+	特殊裝置的核心記憶體。修法是在接受檔名之前，先拒絕保留裝置名稱（CON、NUL、AUX、COM1 等）、
+	結尾的點與空格，以及任何含 : 的 alternate data stream 語法，只允許真正落在受控目錄的一般檔案。`,
+		problem: `// 不安全寫法：直接採信使用者檔名建立/寫入,名稱打到保留裝置名就改到虛擬資源
+#include <windows.h>
+
+int save_note(const wchar_t *name, const wchar_t *text) {
+    WCHAR path[MAX_PATH] = L"C:\\\\notes\\\\";
+    wcscat_s(path, MAX_PATH, name);                  // name 可能是 L"nul" 或 "CON"
+    HANDLE h = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, NULL,
+                          CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) return -1;
+    DWORD n = 0;
+    WriteFile(h, (BYTE*)text, (DWORD)wcslen(text) * 2, &n, NULL);  // 寫到的是 NUL 裝置
+    CloseHandle(h);
+    return 0;
+}`,
+		fixed: `// 安全寫法：先過濾保留名稱、尾端點/空白與 :: 語法,只准一般檔名進受控目錄
+#include <windows.h>
+
+static int is_reserved_name(const wchar_t *name) {
+    wchar_t bare[16];
+    int i = 0;
+    while (name[i] && name[i] != L'.' && i < 15) { bare[i] = name[i]; i++; }
+    bare[i] = L'\\0';
+    if (i == 0) return 1;                                   // 空白名稱
+    if (_wcsicmp(bare, L"CON") == 0 ||
+        _wcsicmp(bare, L"NUL") == 0 ||
+        _wcsicmp(bare, L"AUX") == 0 ||
+        _wcsicmp(bare, L"PRN") == 0 ||
+        _wcsnicmp(bare, L"COM", 3) == 0 ||               // COM1..COM9
+        _wcsnicmp(bare, L"LPT", 3) == 0) return 1;      // LPT1..LPT9
+    size_t len = wcslen(name);
+    return wcsrchr(name, L':') != NULL ||                    // :: 資料流語法
+           (len && name[len - 1] == L' ') ||
+           (len && name[len - 1] == L'.');
+}
+
+int save_note_safe(const wchar_t *name, const wchar_t *text) {
+    if (is_reserved_name(name)) return -1;                    // 命中保留/虛擬資源 => 拒
+    WCHAR path[MAX_PATH] = L"C:\\\\notes\\\\";
+    wcscat_s(path, MAX_PATH, name);
+    HANDLE h = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, NULL,
+                          CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) return -1;
+    DWORD n = 0;
+    WriteFile(h, (BYTE*)text, (DWORD)wcslen(text) * 2, &n, NULL);
+    CloseHandle(h);
+    return 0;
+}`,
+		patch: `@@
+ int save_note(const wchar_t *name, const wchar_t *text) {
++    if (is_reserved_name(name)) return -1;                    // 保留裝置/:: 資料流 => 拒
+     WCHAR path[MAX_PATH] = L"C:\\\\notes\\\\";
+     wcscat_s(path, MAX_PATH, name);
+     HANDLE h = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, NULL,
+                           CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+     if (h == INVALID_HANDLE_VALUE) return -1;`,
+		refs: ['CWE-66', 'CWE-67', 'CWE-69'],
+		tags: ['virtual-resource', 'device-name', 'alternate-data-stream', 'reserved-name', 'windows'],
+	},
+	{
+		id: 'CWE-378',
+		name: 'Creation of Temporary File With Insecure Permissions',
+		lang: 'c',
+		status: 'Complete',
+		what: `以不安全的權限建立暫存檔。開發者常用 tmpnam()／mktemp() 這類只「產生一個檔名」的 API，
+	再做一次獨立的 open 來建立檔案;這樣做出的暫存檔權限受 umask 支配（常常是 0644），機敏感性內容
+	（token、金鑰、暫存密碼檔）便對本機其他使用者可讀，而且「取名字」與「建立」分開還會留下可被預置
+	symlink／猜中名字的競態空窗。CWE-378 特別強調權限問題:暫存檔內容一旦以世界可讀的權限落盤，
+	任何能列目錄的人就能整份讀走。修法是使用 mkstemp() 這類「單一原子 API」——它在建立當下就生成
+	唯一的隨機檔名、設定成 0600 私有權限、並直接回傳已開啟的 fd,寫完即關閉,不把機密留給他人可讀
+	的暫存檔，也讓猜檔名的 symlink 攻擊無從下手。`,
+		problem: `// 不安全寫法：tmpnam() 只給名字,再用 fopen 以預設 umask(常 0644)建立 => 他人可讀
+#include <stdio.h>
+#include <stdlib.h>
+
+int write_secret(const char *secret) {
+    char tmp[L_tmpnam];
+    tmpnam(tmp);                  // tmpnam 只「產生名字」,不保證安全建立 & 權限
+    FILE *f = fopen(tmp, "w");   // 受 umask 影響常見 0644,且名字可猜、可被預置 symlink
+    if (!f) return -1;
+    fprintf(f, "%s", secret);     // 機密以世界可讀權限留板
+    fclose(f);
+    return 0;
+}`,
+		fixed: `// 安全寫法：mkstemp() 一次建立唯一檔名 + 私有 0600 權限並回傳 fd
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+
+int write_secret(const char *secret) {
+    char tmpl[] = "/tmp/app-XXXXXX";
+    int fd = mkstemp(tmpl);      // 建立即 0600(僅本人),檔名隨機不可猜,無預置/symlink空窗
+    if (fd < 0) return -1;
+    dprintf(fd, "%s", secret);
+    close(fd);
+    return 0;
+}`,
+		patch: `@@
+-    char tmp[L_tmpnam];
+-    tmpnam(tmp);
+-    FILE *f = fopen(tmp, "w");
+-    if (!f) return -1;
+-    fprintf(f, "%s", secret);
+-    fclose(f);
++    char tmpl[] = "/tmp/app-XXXXXX";
++    int fd = mkstemp(tmpl);      // 建立即 0600 私有,名字隨機
++    if (fd < 0) return -1;
++    dprintf(fd, "%s", secret);
++    close(fd);
+     return 0;
+ }`,
+		refs: ['CWE-378', 'CWE-377', 'SEI CERT'],
+		tags: ['temp-file', 'mkstemp', 'permissions', 'tmpnam', 'world-readable'],
+	},
+	{
 		id: 'CWE-426',
 		name: 'Untrusted Search Path',
 		lang: 'node',
@@ -153,5 +382,47 @@ sc create MyService binPath= "C:\\Program Files\\My App\\app.exe" start= auto`,
   +    "C:\\Program Files\\My App\\app.exe" start= auto`,
 		refs: ['CWE-428', 'SEI CERT'],
 		tags: ['unquoted-path', 'windows', 'quote', 'service', 'command-line'],
+	},
+	{
+		id: 'CWE-552',
+		name: 'Files or Directories Accessible to External Parties',
+		lang: 'nodejavascript',
+		status: 'Complete',
+		what: `不該公開的檔案或目錄被外部看得到。網頁伺服器／檔案伺服器用「整棵目錄」當靜態根,或把
+	　包含設定、備份、原始碼、.env、.git 的目錄也放進能透過網路存取的根,於是最重要但最容易被忽略的
+	資訊就露在加密運輸後面任何人可下載。攻擊者只要猜檔名或走目錄列舉(Listing)就能讀到設定密碼、資料庫
+	連線字串、原始程式碼,甚至把 .git 整包拉下來逆推出更多秘密。這與需要深入發掘的漏洞不同——暴露通常是
+	「某個路徑沒被擋住」這種壓根沒設防的狀態。修法是只把「明確白名單」的公開assets放進可存取根,其他
+	目錄一律不分派、設定檔/原始檔放在文件根之外,並對敏感副檔名與隱藏檔(.env、.git、backup)回傳404。`,
+		problem: `// 不安全寫法：把整個工作目錄(含 .env, .git, src)都設成靜態根,全都可被下載
+const express = require('express');
+const app = express();
+
+// 文件根直接指向專案根目錄 => 任何人都能 GET /.env、/.git/config、/src/index.js
+app.use(express.static(process.cwd()));   // process.cwd() 就是整個專案,含機密設定
+app.listen(8080);`,
+		fixed: `// 安全寫法：只把建置後的白名單 public 目錄設為靜態根;隱藏檔與敏感副檔名一律 404
+const express = require('express');
+const path = require('path');
+const app = express();
+
+const PUBLIC_ROOT = path.resolve(__dirname, 'dist', 'public');   // 只有公開 assets
+app.use(express.static(PUBLIC_ROOT));                            // 源碼/.env/.git 根本不在根下
+
+// 額外保險:對明顯的敏感路徑一律重導給 404,不回應存在與否
+app.use('/.env', (req, res) => res.status(404).end());
+app.use('/.git', (req, res) => res.status(404).end());
+app.listen(8080);`,
+		patch: `@@
+  const app = express();
+- // 文件根直接指向專案根目錄 => 任何人都能 GET /.env、/.git/config、/src/index.js
+- app.use(express.static(process.cwd()));   // process.cwd() 就是整個專案,含機密設定
++ const PUBLIC_ROOT = path.resolve(__dirname, 'dist', 'public');
++ app.use(express.static(PUBLIC_ROOT));      // 源碼/.env/.git 不在靜態根之下
++ app.use('/.env', (req, res) => res.status(404).end());
++ app.use('/.git', (req, res) => res.status(404).end());
+  app.listen(8080);`,
+		refs: ['CWE-552', 'OWASP'],
+		tags: ['exposed-files', 'directory-listing', 'static-root', 'source-exposure', '.env'],
 	},
 ];

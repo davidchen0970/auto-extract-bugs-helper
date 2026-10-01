@@ -6,7 +6,6 @@
 //   lang    : 此條範例主力語言，依 CWE 類別選擇
 //   status  : Complete | Incomplete | Deprecated
 //   refs    : 參考（OWASP / MITRE 等）
-//   refs    : 參考（OWASP / MITRE 等）
 //   tags    : 英文搜尋標籤
 export default [
 	{
@@ -15,10 +14,10 @@ export default [
 		lang: 'php',
 		status: 'Complete',
 		what: `工作階段固定（Session Fixation）。伺服器在登入前就接受使用者可控的 session id，
-而在登入成功後沒有重新產生全新 id。攻擊者可以先把自己的 session id 丟給受害者，
-等受害者用同一個 id 登入後，攻擊者再用同一個 id 就能偽裝成受害者。
-建議做法是登入前不採用客戶端提供的 session id，並在權限升級（登入／取得管理權）時
-一律呼叫 session_regenerate_id(true) 打掉舊 id。`,
+	而在登入成功後沒有重新產生全新 id。攻擊者可以先把自己的 session id 丟給受害者，
+	等受害者用同一個 id 登入後，攻擊者再用同一個 id 就能偽裝成受害者。
+	建議做法是登入前不採用客戶端提供的 session id，並在權限升級（登入／取得管理權）時
+	一律呼叫 session_regenerate_id(true) 打掉舊 id。`,
 		problem: `<?php // 不安全寫法：登入前直接採納用戶送的 PHPSESSID，登入後也不重新產生
 session_id($_COOKIE['PHPSESSID'] ?? uniqid());   // 接受使用者可控的 session id
 session_start();
@@ -54,14 +53,61 @@ if (password_verify($pwd, $row['hash'])) {
 		tags: ['session-fixation', 'session', 'regenerate-id'],
 	},
 	{
+		id: 'CWE-488',
+		name: 'Exposure of Data Element to Wrong Session',
+		lang: 'nodejavascript',
+		status: 'Complete',
+		what: `把資料元素暴露給「錯誤的工作階段」（Exposure of Data Element to Wrong Session）。系統在建立或切換 session
+	時，把原先屬於某個 session 專屬的資料元素放到了會被另一場 session 誤讀的位置——例如用一個程式全域變數存放「目前
+	登入者」，於是同時開兩個瀏覽器／帳號時雙方互踩同一份資料；或私有的購物車、角色、胸章被寫進以「共用常數」當 key
+	的全域 hash，讓所有 session 都能互相讀到。攻擊者只要在同一台裝置並存登入，或用共用的後端暫存（memcache/glob），
+	就能把別人的資料誤接回自己身上，造成身分混淆與越權存取。正確做法是每筆 session 私有資料都嚴格以唯一、不衝突的
+	session 識別為 key，由伺服器端的 session store 分隔保存，絕不把個別 session 的私有元素放進共用可互相讀取的區。`,
+		problem: `// 不安全寫法：把「目前登入者」存成模組全域變數，並場 session一起跑就互竊資料
+let currentUid = null;          // 全域！不是每個 session 專屬
+let currentCart = null;
+app.use((req, res, next) => {
+  currentUid = req.query.debug_uid || null;      // 還被 query 直接控制
+  currentCart = db.carts.get(currentUid);
+  next();
+});
+app.post('/api/checkout', (req, res) => {
+  // 讀到的 currentCart 可能是「別人最後一次設定」的那份
+  charge(currentUid, currentCart);
+});`,
+		fixed: `// 安全寫法：session 私有資料一律放進伺服器端、以該 session 唯一識別為 key
+app.use(session({ store: redisStore, secret, cookie: { httpOnly: true } }));
+app.post('/api/checkout', (req, res) => {
+  if (!req.session || !req.session.uid) return res.sendStatus(401);   // 身分來自 session，非 query
+  const cart = db.carts.get(req.session.uid);          // 以 session 綁定的 uid 讀自己那份
+  charge(req.session.uid, cart);
+});`,
+		patch: `@@
+-  let currentUid = null;
+-  let currentCart = null;
+-  app.use((req, res, next) => {
+-    currentUid = req.query.debug_uid || null;
+-    currentCart = db.carts.get(currentUid);
+-    next();
+-  });
+   app.post('/api/checkout', (req, res) => {
+-    charge(currentUid, currentCart);
++    if (!req.session || !req.session.uid) return res.sendStatus(401);
++    const cart = db.carts.get(req.session.uid);
++    charge(req.session.uid, cart);
+   });`,
+		refs: ['OWASP-SessionManagement', 'CWE-488'],
+		tags: ['session', 'wrong-session', 'shared-state'],
+	},
+	{
 		id: 'CWE-613',
 		name: 'Insufficient Session Expiration',
 		lang: 'nodejavascript',
 		status: 'Complete',
 		what: `工作階段不會（或不夠快地）過期。沒有設定 maxAge、設成一年、或沒有 idle timeout，
-等於使用者「永遠在線」，被偷走的 session id 也能無限重用。
-建議做法是設定夠短的有效期（absolute/absoluteTimeout），並加入不活動逾時與 rolling renewal，
-讓憑證與 session 都要在可接受時間內確實失效，敏感刪除時也要主動 session.destroy()。`,
+	等於使用者「永遠在線」，被偷走的 session id 也能無限重用。
+	建議做法是設定夠短的有效期（absolute/absoluteTimeout），並加入不活動逾時與 rolling renewal，
+	讓憑證與 session 都要在可接受時間內確實失效，敏感刪除時也要主動 session.destroy()。`,
 		problem: `// 不安全寫法：cookie maxAge 長達一年，等同永不停期的 session，偷到的 sid 能狂用
 const express = require('express');
 const session = require('express-session');
@@ -109,9 +155,9 @@ setInterval(() => db.sessions.deleteMany({ expires_at: { $lt: Date.now() } }), 6
 		lang: 'nodejavascript',
 		status: 'Complete',
 		what: `關鍵狀態資料被外部控制。把決定流程或安全的「狀態」（結帳金額、授權旗標、
-流程步驟、計費等級）存在使用者可控的地方——明文 cookie、隱藏表單欄位、query——
-並直接信任它。攻擊者改動這個狀態值（例：把結帳金額改成 1 元、把已完成付款指為 true），
-伺服器便照單全收、做出錯誤的安全決策。建議做法是狀態一律留在伺服器端（session／DB）保管。`,
+	流程步驟、計費等級）存在使用者可控的地方——明文 cookie、隱藏表單欄位、query——
+	並直接信任它。攻擊者改動這個狀態值（例：把結帳金額改成 1 元、把已完成付款指為 true），
+	伺服器便照單全收、做出錯誤的安全決策。建議做法是狀態一律留在伺服器端（session／DB）保管。`,
 		problem: `// 不安全寫法：把「是否已付款」與「金額」存在前端可控的 cookie，改值就賴帳
 const cart = JSON.parse(req.cookies.cart || '{}');   // 隱藏表單 / cookie 由用戶掌控
 if (cart.paid === true) {                            // 攻擊者只需把 paid 設成 true
@@ -146,9 +192,9 @@ db.orders.findById(req.body.orderId, (e, order) => {
 		lang: 'python',
 		status: 'Complete',
 		what: `安全決策建立在不可信的輸入上。以用戶可以偽造或射入的資料——例如
-X-Forwarded-For 標頭、隱藏表單欄位、車票欄位——直接當作「是否放行／要不要限速／
-要信任誰」的依據。攻擊者送出偽造的來源或旗標，就能繞過速率限制、假裝來自白名單 IP。
-建議做法是安全決策只用伺服器端蒐集並驗證過的資料，若要取真實 IP 就解析可信的代理層。`,
+	X-Forwarded-For 標頭、隱藏表單欄位、車票欄位——直接當作「是否放行／要不要限速／
+	要信任誰」的依據。攻擊者送出偽造的來源或旗標，就能繞過速率限制、假裝來自白名單 IP。
+	建議做法是安全決策只用伺服器端蒐集並驗證過的資料，若要取真實 IP 就解析可信的代理層。`,
 		problem: `# 不安全寫法：用前端可隨意偽造的 X-Forwarded-For 當來源決定「要不要限速」
 from flask import request
 
