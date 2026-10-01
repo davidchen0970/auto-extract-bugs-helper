@@ -14,6 +14,10 @@ import session from '../data/cwe/session.js';
 import permissions from '../data/cwe/permissions.js';
 import webInclude from '../data/cwe/web-include.js';
 import server from '../data/cwe/server.js';
+import brokenAccessControl from '../data/cwe/broken-access-control.js';
+import filesPaths from '../data/cwe/files-paths.js';
+import resourceDos from '../data/cwe/resource-dos.js';
+import cryptoHardening from '../data/cwe/crypto-hardening.js';
 
 const CHUNKS = [
 	['input-validation', inputValidation],
@@ -29,6 +33,10 @@ const CHUNKS = [
 	['permissions', permissions],
 	['web-include', webInclude],
 	['server', server],
+	['broken-access-control', brokenAccessControl],
+	['files-paths', filesPaths],
+	['resource-dos', resourceDos],
+	['crypto-hardening', cryptoHardening],
 ];
 const REQUIRED = ['id', 'name', 'status', 'what', 'problem', 'fixed', 'patch', 'refs', 'tags'];
 
