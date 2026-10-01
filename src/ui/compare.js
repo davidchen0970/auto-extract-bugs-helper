@@ -11,12 +11,15 @@ const cmp = {
 	fileB: null,
 };
 
+const PAGES = ['open', 'compare', 'cwe'];
 function switchPage(name) {
-	const open = name === 'open';
-	$('page-open').hidden = !open;
-	$('page-compare').hidden = open;
-	$('tab-open').classList.toggle('active', open);
-	$('tab-compare').classList.toggle('active', !open);
+	for (const p of PAGES) {
+		const page = $('page-' + p);
+		const tab = $('tab-' + p);
+		if (!page || !tab) continue;
+		page.hidden = p !== name;
+		tab.classList.toggle('active', p === name);
+	}
 }
 
 function setSlotName(slot, name) {
@@ -249,6 +252,7 @@ function closeMobileMenu() {
 export function bindCompare() {
 	$('tab-open').addEventListener('click', () => switchPage('open'));
 	$('tab-compare').addEventListener('click', () => switchPage('compare'));
+	$('tab-cwe').addEventListener('click', () => switchPage('cwe'));
 	$('menu-open').addEventListener('click', () => { switchPage('open'); closeMobileMenu(); });
 	$('menu-compare').addEventListener('click', () => { switchPage('compare'); closeMobileMenu(); });
 	$('btn-open').addEventListener('click', () => switchPage('open'));

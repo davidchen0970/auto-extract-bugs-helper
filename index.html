@@ -34,6 +34,7 @@
 	<nav id="app-tabs" class="app-tabs" aria-label="工作模式">
 		<button id="tab-open" class="app-tab active" data-page="open">開啟報表</button>
 		<button id="tab-compare" class="app-tab" data-page="compare">比對兩份報表</button>
+		<button id="tab-cwe" class="app-tab" data-page="cwe">CWE 手冊</button>
 	</nav>
 
 
@@ -100,6 +101,19 @@
 			<div id="compare-results" class="compare-results" hidden></div>
 		</div>
 
+	</section>
+
+
+	<section id="page-cwe" class="app-page" data-page="cwe" hidden>
+		<header class="cwe-head">
+			<h2 class="panel-title">CWE 弱點手冊</h2>
+			<div class="cwe-tools">
+				<input id="cwe-q" class="cwe-search" type="search" placeholder="依 ID 或名稱搜尋（例如 CWE-79 / XSS）" aria-label="搜尋 CWE">
+				<label class="cwe-filter"><input id="cwe-hide-deprecated" type="checkbox"> 隱藏已淘汰 (Deprecated)</label>
+			</div>
+		</header>
+		<div id="cwe-list" class="cwe-list"></div>
+		<section id="cwe-detail" class="cwe-detail" hidden></section>
 	</section>
 
 
