@@ -1,0 +1,25 @@
+// AI 弱點手冊 index — 「CVE編號@套件」組合金鑰 → 分類檔相對路徑（供 lazy import）
+// 此檔由 scripts/build-vuln-index.mjs 自動產生，請勿手動編輯。
+export default {
+	"CVE-2017-7544@gimp": "Information_Disclosure/CVE-2017-7544_gimp.js",
+	"CVE-2019-12900@python": "Memory_Safety/CVE-2019-12900_python.js",
+	"CVE-2019-14202@u-boot": "Memory_Safety/CVE-2019-14202_u-boot.js",
+	"CVE-2019-14203@u-boot": "Memory_Safety/CVE-2019-14203_u-boot.js",
+	"CVE-2020-15801@python": "Input_Validation/CVE-2020-15801_python.js",
+	"CVE-2020-36242@pyca-cryptography": "Memory_Safety/CVE-2020-36242_pyca-cryptography.js",
+	"CVE-2021-29462@pupnp": "Input_Validation/CVE-2021-29462_pupnp.js",
+	"CVE-2021-3156@sudo": "Memory_Safety/CVE-2021-3156_sudo.js",
+	"CVE-2021-3773@linux-kernel": "Information_Disclosure/CVE-2021-3773_linux-kernel.js",
+	"CVE-2021-47348@linux-kernel": "Memory_Safety/CVE-2021-47348_linux-kernel.js",
+	"CVE-2022-28321@linux-pam": "Authentication_Bypass/CVE-2022-28321_linux-pam.js",
+	"CVE-2022-37434@rsync": "Memory_Safety/CVE-2022-37434_rsync.js",
+	"CVE-2026-13221@perl": "Memory_Safety/CVE-2026-13221_perl.js",
+	"CVE-2026-29009@u-boot": "Memory_Safety/CVE-2026-29009_u-boot.js",
+	"CVE-2026-31608@linux-kernel": "Memory_Safety/CVE-2026-31608_linux-kernel.js",
+	"CVE-2026-31609@linux-kernel": "Memory_Safety/CVE-2026-31609_linux-kernel.js",
+	"CVE-2026-42496@archive-tar": "Path_Traversal/CVE-2026-42496_archive-tar.js",
+	"CVE-2026-42496@perl": "Path_Traversal/CVE-2026-42496_perl.js",
+	"CVE-2026-53043@linux-kernel": "Memory_Safety/CVE-2026-53043_linux-kernel.js",
+	"CVE-2026-53309@linux-kernel": "Memory_Safety/CVE-2026-53309_linux-kernel.js",
+	"CVE-2026-53355@linux-kernel": "Memory_Safety/CVE-2026-53355_linux-kernel.js",
+};
