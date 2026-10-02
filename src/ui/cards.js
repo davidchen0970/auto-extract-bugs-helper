@@ -1,7 +1,14 @@
 import { esc, cveLink, cweLink, cveExtLinks } from './util.js';
 import { renderMd } from './md.js';
 import { sevLabel } from '../core/index.js';
-import { cweWhat } from './cwe.js';
+
+// A "CWE 說明" cell. The handbook data is lazy-loaded now, so we stamp the id on the
+// element and let drawer.js hydrate it in place with cweWhat(id) after openDrawer;
+// b.desc is shown meanwhile so the detail opens instantly without waiting on a chunk.
+function cweDescCell(id, fallback) {
+	if (!id) return fallback;
+	return `<span class="cwe-what" data-cwe="${esc(id)}">${fallback}</span>`;
+}
 
 export function sevBadge(sev) { return `<span class="bug-sev">${sevLabel[sev] || sev}</span>`; }
 
@@ -45,7 +52,7 @@ export function covBody(b) {
         <dt>類型</dt><dd>${esc(b.type)}${b.category ? ' · ' + esc(b.category) : ''}</dd>
         ${b.checker ? `<dt>Checker</dt><dd>${esc(b.checker)}</dd>` : ''}
         ${b.cwe ? `<dt>CWE</dt><dd>${cweLink(b.cwe)}</dd>` : ''}
-        <dt>CWE 說明</dt><dd>${renderMd(cweWhat(b.cwe) || b.desc || '—')}</dd>
+        <dt>CWE 說明</dt><dd>${cweDescCell(b.cwe, renderMd(b.desc || '—'))}</dd>
       </div>
       ${events}
       ${covCodeHtml(b.code)}
@@ -75,7 +82,7 @@ export function bdBody(b) {
         ${b.short ? `<dt>短期建議</dt><dd>${esc(b.short)}</dd>` : ''}
         ${b.long ? `<dt>長期建議</dt><dd>${esc(b.long)}</dd>` : ''}
         ${b.exploit ? `<dt>已知攻擊程式</dt><dd>${esc(b.exploit) === 'N/A' ? '無' : esc(b.exploit)}</dd>` : ''}
-        <dt>CWE 說明</dt><dd>${renderMd(cweWhat(b.cwe) || b.desc || '—')}</dd>
+        <dt>CWE 說明</dt><dd>${cweDescCell(b.cwe, renderMd(b.desc || '—'))}</dd>
         ${b.official ? `<dt>官方解法</dt><dd>${renderMd(b.official)}</dd>` : ''}
         ${b.workaround ? `<dt>暫時規避</dt><dd>${esc(b.workaround)}</dd>` : ''}
       </div>
@@ -146,8 +153,8 @@ export function customBody(b) {
 	const desc = b.desc ? `<div class="desc-block">${renderMd(b.desc)}</div>` : '';
 
 	let cweNote = '';
-	const what = (b.cweList || []).map((c) => ({ c, w: cweWhat(c) })).filter((x) => x.w)[0];
-	if (what) cweNote = `<div class="kv det-kv"><dt>CWE 說明（${esc(what.c)}）</dt><dd>${renderMd(what.w)}</dd></div>`;
+	const cwes = (b.cweList || []).filter(Boolean).slice(0, 1);
+	if (cwes.length) cweNote = `<div class="kv det-kv"><dt>CWE 說明</dt><dd>${cweDescCell(cwes[0], '—')}</dd></div>`;
 
 	const extraRows = Object.keys(b.fields || {})
 		.filter((k) => !CUSTOM_SURFACED.has(k))
