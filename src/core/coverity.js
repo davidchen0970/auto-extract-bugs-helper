@@ -105,6 +105,7 @@ export function parseCoverity(htmlStr) {
 			const clean = (s) => String(s || '').replace(/<.*?>/g, '').trim();
 			bugs.push({
 				src: 'coverity',
+				aiResearch: '',
 				sev: effSev,
 				type: clean(typeText),
 				checker: clean(checker),
