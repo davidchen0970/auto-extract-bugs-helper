@@ -35,6 +35,35 @@
 .cwe-sec { margin-bottom: 16px; }
 .cwe-label { margin: 0 0 6px; }
 .cwe-text { margin: 0; line-height: 1.55; }
+
+.cwe-text, .ai-research { line-height: 1.6; }
+.cwe-text > :first-child, .ai-research > :first-child { margin-top: 0; }
+.cwe-text > :last-child, .ai-research > :last-child { margin-bottom: 0; }
+.cwe-text p, .ai-research p { margin: 0 0 .7em; }
+.cwe-text ul, .cwe-text ol, .ai-research ul, .ai-research ol { margin: .25em 0 .85em 1.5em; padding: 0; }
+.cwe-text li, .ai-research li { margin: .16em 0; }
+.cwe-text h1, .cwe-text h2, .cwe-text h3, .cwe-text h4, .cwe-text h5, .cwe-text h6,
+.ai-research h1, .ai-research h2, .ai-research h3, .ai-research h4, .ai-research h5, .ai-research h6 {
+	margin: .95em 0 .35em; line-height: 1.3; }
+.cwe-text h1, .ai-research h1 { font-size: 1.3em; }
+.cwe-text h2, .ai-research h2 { font-size: 1.16em; }
+.cwe-text h3, .ai-research h3 { font-size: 1.05em; }
+.cwe-text h4, .ai-research h4 { font-size: 1em; }
+.cwe-text code, .ai-research code {
+	background: var(--bg2, rgba(127,127,127,.18)); padding: .1em .32em;
+	border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: .92em; }
+.cwe-text pre, .ai-research pre {
+	background: var(--bg2); border: 1px solid var(--border); border-radius: 7px;
+	padding: 9px 11px; overflow-x: auto; font-size: .92em; }
+.cwe-text pre code, .ai-research pre code { background: none; padding: 0; }
+.cwe-text blockquote, .ai-research blockquote {
+	margin: .7em 0; padding: .2em .95em; border-left: 3px solid var(--border2); color: var(--muted); }
+.cwe-text a, .ai-research a { color: var(--accent); }
+.cwe-text hr, .ai-research hr { border: 0; border-top: 1px solid var(--border2); margin: 1.1em 0; }
+.cwe-text table, .ai-research table { border-collapse: collapse; margin: .7em 0; font-size: .95em; }
+.cwe-text th, .cwe-text td, .ai-research th, .ai-research td { border: 1px solid var(--border); padding: 5px 10px; }
+.cwe-text th, .ai-research th { background: var(--bg2); }
 .cwe-code { margin: 0 0 6px; }
 .cwe-code-tag {
 	font-size: 11px; color: var(--muted);

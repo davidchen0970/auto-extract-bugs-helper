@@ -1,4 +1,5 @@
 import { $ } from './util.js';
+import { renderMd } from './md.js';
 
 let catalog = null;
 let catalogP = null;
@@ -103,7 +104,9 @@ function buildDetail(e) {
 		d.appendChild(s);
 	};
 
-	section('(a) 弱點是什麼', el('p', 'cwe-text', e.what));
+	const whatBlock = el('div', 'cwe-text');
+	whatBlock.innerHTML = renderMd(e.what || '—');
+	section('(a) 弱點是什麼', whatBlock);
 	section('(b) 問題長怎樣', codeBlock('壞的寫法', e.lang, e.problem));
 	section('(c) 解完會長怎樣', codeBlock('修好寫法', e.lang, e.fixed));
 	section('(d) 範例 patch', diffBlock(e.patch));

@@ -1,6 +1,7 @@
 import { esc, cveLink, cweLink, cveExtLinks } from './util.js';
 import { renderMd } from './md.js';
 import { sevLabel } from '../core/index.js';
+import { pkgSlug } from './vuln.js';
 
 // A "CWE 說明" cell. The handbook data is lazy-loaded now, so we stamp the id on the
 // element and let drawer.js hydrate it in place with cweWhat(id) after openDrawer;
@@ -42,6 +43,15 @@ export function covHead(b, coord) {
     </div>`;
 }
 
+function researchRow(b) {
+	if (b.aiResearch) return `<dt>AI 研究結果</dt><dd class="ai-research">${renderMd(b.aiResearch)}</dd>`;
+	const isSca = b.src === 'custom' || b.src === 'blackduck';
+	const cveId = b.cveClean || b.cve || '';
+	const key = (isSca && cveId && b.component) ? cveId + '@' + pkgSlug(b.component) : '';
+	if (!key) return '';
+	return `<dt class="ai-research-row" hidden>AI 研究結果</dt><dd class="ai-research" data-key="${esc(key)}" hidden></dd>`;
+}
+
 export function covBody(b) {
 	const events = (b.events && b.events.length
 		? `<ol class="events">${b.events.map((e) => `<li><b>${esc(e.tag)}</b> ${esc(e.text)}</li>`).join('')}</ol>`
@@ -53,6 +63,7 @@ export function covBody(b) {
         ${b.checker ? `<dt>Checker</dt><dd>${esc(b.checker)}</dd>` : ''}
         ${b.cwe ? `<dt>CWE</dt><dd>${cweLink(b.cwe)}</dd>` : ''}
         <dt>CWE 說明</dt><dd>${cweDescCell(b.cwe, renderMd(b.desc || '—'))}</dd>
+        ${researchRow(b)}
       </div>
       ${events}
       ${covCodeHtml(b.code)}
@@ -83,6 +94,7 @@ export function bdBody(b) {
         ${b.long ? `<dt>長期建議</dt><dd>${esc(b.long)}</dd>` : ''}
         ${b.exploit ? `<dt>已知攻擊程式</dt><dd>${esc(b.exploit) === 'N/A' ? '無' : esc(b.exploit)}</dd>` : ''}
         <dt>CWE 說明</dt><dd>${cweDescCell(b.cwe, renderMd(b.desc || '—'))}</dd>
+        ${researchRow(b)}
         ${b.official ? `<dt>官方解法</dt><dd>${renderMd(b.official)}</dd>` : ''}
         ${b.workaround ? `<dt>暫時規避</dt><dd>${esc(b.workaround)}</dd>` : ''}
       </div>
@@ -154,7 +166,7 @@ export function customBody(b) {
 
 	let cweNote = '';
 	const cwes = (b.cweList || []).filter(Boolean).slice(0, 1);
-	if (cwes.length) cweNote = `<div class="kv det-kv"><dt>CWE 說明</dt><dd>${cweDescCell(cwes[0], '—')}</dd></div>`;
+	if (cwes.length) cweNote = `<div class="kv det-kv"><dt>CWE 說明</dt><dd>${cweDescCell(cwes[0], '—')}</dd>${researchRow(b)}</div>`;
 
 	const extraRows = Object.keys(b.fields || {})
 		.filter((k) => !CUSTOM_SURFACED.has(k))
