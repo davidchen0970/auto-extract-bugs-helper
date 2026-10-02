@@ -4,3 +4,6 @@ node_modules/
 
 # AI 研究流程 guideline（meta，非交付資料）
 data/vuln/AI-RESEARCH-GUIDELINE.md
+
+# 大型安全性掃描 CSV（TODO_files）
+data/TODO_files/
