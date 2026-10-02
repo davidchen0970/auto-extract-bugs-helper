@@ -35,6 +35,7 @@
 		<button id="tab-open" class="app-tab active" data-page="open">開啟報表</button>
 		<button id="tab-compare" class="app-tab" data-page="compare">比對兩份報表</button>
 		<button id="tab-cwe" class="app-tab" data-page="cwe">CWE 手冊</button>
+		<button id="tab-vuln" class="app-tab" data-page="vuln">AI 弱點手冊</button>
 	</nav>
 
 
@@ -113,6 +114,18 @@
 			</div>
 		</header>
 		<div id="cwe-list" class="cwe-list"></div>
+	</section>
+
+
+	<section id="page-vuln" class="app-page" data-page="vuln" hidden>
+		<header class="cwe-head">
+			<h2 class="panel-title">AI 弱點手冊（CVSS + package）</h2>
+			<p class="muted">依「CVE 編號 + 套件」檢索 SCA 弱點的解釋；新增條目見 <code>data/vuln/README.md</code>。</p>
+			<div class="cwe-tools">
+				<input id="vuln-q" class="cwe-search" type="search" placeholder="依 CVE / 套件 / 名稱搜尋（例如 log4shell / openssl）" aria-label="搜尋弱點">
+			</div>
+		</header>
+		<div id="vuln-list" class="cwe-list"></div>
 	</section>
 
 

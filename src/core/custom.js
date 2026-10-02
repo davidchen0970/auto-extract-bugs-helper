@@ -126,6 +126,7 @@ export function parseCustomCSV(csvStr) {
 
 		bugs.push({
 			src: 'custom',
+			aiResearch: '',
 			sev,
 			component: g(ci),
 			version: g(vi),

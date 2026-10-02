@@ -1,3 +1,6 @@
 node_modules/
 *.log
 .DS_Store
+
+# AI 研究流程 guideline（meta，非交付資料）
+data/vuln/AI-RESEARCH-GUIDELINE.md

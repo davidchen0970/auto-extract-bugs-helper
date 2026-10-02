@@ -91,6 +91,7 @@ export function parseBlackDuck(csvStr) {
 		totals.total++;
 		bugs.push({
 			src: 'blackduck',
+			aiResearch: '',
 			sev,
 			component: g(ci),
 			version: g(vi),

@@ -7,6 +7,7 @@ import { exportActive, exportBug, copyBug } from './export.js';
 import { toggleTheme, focusSearch } from './theme.js';
 import { bindCompare } from './compare.js';
 import { initCwe } from './cwe.js';
+import { initVuln } from './vuln.js';
 
 export function bindUI() {
 	const dz = $('dropzone'), fin = $('file-input');
@@ -59,6 +60,7 @@ export function bindUI() {
 	$('drawer-overlay').addEventListener('click', closeDrawer);
 	bindCompare();
 	initCwe();
+	initVuln();
 
 	document.addEventListener('keydown', (e) => {
 		if (e.target && e.target.id === 'q' && (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'PageDown')) {

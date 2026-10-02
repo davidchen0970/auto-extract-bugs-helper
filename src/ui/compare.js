@@ -24,7 +24,7 @@ function catItems(diff, cat) {
 	return diff.changed || [];
 }
 
-const PAGES = ['open', 'compare', 'cwe'];
+const PAGES = ['open', 'compare', 'cwe', 'vuln'];
 function switchPage(name) {
 	for (const p of PAGES) {
 		const page = $('page-' + p);
@@ -312,6 +312,7 @@ export function bindCompare() {
 	$('tab-open').addEventListener('click', () => switchPage('open'));
 	$('tab-compare').addEventListener('click', () => switchPage('compare'));
 	$('tab-cwe').addEventListener('click', () => switchPage('cwe'));
+	$('tab-vuln').addEventListener('click', () => switchPage('vuln'));
 	$('menu-open').addEventListener('click', () => { switchPage('open'); closeMobileMenu(); });
 	$('menu-compare').addEventListener('click', () => { switchPage('compare'); closeMobileMenu(); });
 	$('btn-open').addEventListener('click', () => switchPage('open'));
