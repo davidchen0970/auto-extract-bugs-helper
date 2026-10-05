@@ -47,6 +47,11 @@ function buildDetail(e) {
 	].filter(Boolean);
 	meta.textContent = bits.join(' · ');
 	d.appendChild(meta);
+	if (e.cvssNote) {
+		const note = el('div', 'cwe-dt-meta cwe-cvss-note');
+		note.textContent = 'CVSS 細節: ' + e.cvssNote;
+		d.appendChild(note);
+	}
 
 	const what = document.createElement('div');
 	what.className = 'cwe-text';

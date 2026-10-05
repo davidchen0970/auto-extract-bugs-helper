@@ -51,6 +51,7 @@
 .cwe-detail { margin-top: 18px; border-top: 1px solid var(--border2); padding-top: 14px; }
 .cwe-dt-head { margin: 0 0 4px; }
 .cwe-dt-meta { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+.cwe-cvss-note { margin-top: -6px; margin-bottom: 12px; font-style: italic; }
 .cwe-sec { margin-bottom: 16px; }
 .cwe-label { margin: 0 0 6px; }
 .cwe-text { margin: 0; line-height: 1.55; }
