@@ -12,7 +12,7 @@
 }
 .cwe-filter { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; }
 
-.cwe-list { display: flex; flex-direction: column; gap: 6px; }
+.cwe-list, .vuln-list { display: flex; flex-direction: column; gap: 6px; }
 .cwe-entry {
 	text-align: left;
 	border: 1px solid var(--border);
@@ -25,13 +25,33 @@
 	display: flex;
 	align-items: baseline;
 	justify-content: space-between;
+	gap: 10px;
+	min-width: 0;
+	overflow-wrap: break-word;
+	word-break: break-word;
 }
 .cwe-entry:hover { border-color: var(--accent); }
-.cwe-entry-sub { color: var(--muted); font-size: 11px; }
+.cwe-entry-main {
+	min-width: 0;
+	flex: 1 1 auto;
+	overflow-wrap: break-word;
+	word-break: break-word;
+	width: 60%;
+}
+.cwe-entry-sub {
+	color: var(--muted);
+	font-size: 11px;
+	width: 30%;
+	flex-shrink: 1;
+	text-align: right;
+	overflow-wrap: break-word;
+	word-break: break-word;
+}
 
 .cwe-detail { margin-top: 18px; border-top: 1px solid var(--border2); padding-top: 14px; }
 .cwe-dt-head { margin: 0 0 4px; }
 .cwe-dt-meta { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+.cwe-cvss-note { margin-top: -6px; margin-bottom: 12px; font-style: italic; }
 .cwe-sec { margin-bottom: 16px; }
 .cwe-label { margin: 0 0 6px; }
 .cwe-text { margin: 0; line-height: 1.55; }

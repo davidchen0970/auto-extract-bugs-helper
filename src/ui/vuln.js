@@ -47,6 +47,11 @@ function buildDetail(e) {
 	].filter(Boolean);
 	meta.textContent = bits.join(' · ');
 	d.appendChild(meta);
+	if (e.cvssNote) {
+		const note = el('div', 'cwe-dt-meta cwe-cvss-note');
+		note.textContent = 'CVSS 細節: ' + e.cvssNote;
+		d.appendChild(note);
+	}
 
 	const what = document.createElement('div');
 	what.className = 'cwe-text';
@@ -100,7 +105,8 @@ async function renderList() {
 
 	listEl.innerHTML = '';
 	for (const e of hits) {
-		const b = el('button', 'cwe-entry', e.key + ' — ' + e.name);
+		const b = el('button', 'cwe-entry');
+		b.appendChild(el('span', 'cwe-entry-main', e.key + ' — ' + e.name));
 		b.appendChild(el('span', 'cwe-entry-sub',
 			(e.pkg || '') + ' · CVSS ' + (e.cvss || '—') + ' · ' + (e.cat || '')));
 		b.addEventListener('click', () => openSheet(e));

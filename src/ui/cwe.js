@@ -149,7 +149,8 @@ async function renderList() {
 
 	listEl.innerHTML = '';
 	for (const e of hits) {
-		const b = el('button', 'cwe-entry', e.id + ' — ' + e.name);
+		const b = el('button', 'cwe-entry');
+		b.appendChild(el('span', 'cwe-entry-main', e.id + ' — ' + e.name));
 		b.appendChild(el('span', 'cwe-entry-sub', (e.cat || '') + ' · ' + e.lang + ' · ' + e.status));
 		b.addEventListener('click', () => openCweSheet(e));
 		listEl.appendChild(b);
