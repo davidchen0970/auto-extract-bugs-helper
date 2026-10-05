@@ -100,7 +100,8 @@ async function renderList() {
 
 	listEl.innerHTML = '';
 	for (const e of hits) {
-		const b = el('button', 'cwe-entry', e.key + ' — ' + e.name);
+		const b = el('button', 'cwe-entry');
+		b.appendChild(el('span', 'cwe-entry-main', e.key + ' — ' + e.name));
 		b.appendChild(el('span', 'cwe-entry-sub',
 			(e.pkg || '') + ' · CVSS ' + (e.cvss || '—') + ' · ' + (e.cat || '')));
 		b.addEventListener('click', () => openSheet(e));

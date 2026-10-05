@@ -25,9 +25,28 @@
 	display: flex;
 	align-items: baseline;
 	justify-content: space-between;
+	gap: 10px;
+	min-width: 0;
+	overflow-wrap: break-word;
+	word-break: break-word;
 }
 .cwe-entry:hover { border-color: var(--accent); }
-.cwe-entry-sub { color: var(--muted); font-size: 11px; }
+.cwe-entry-main {
+	min-width: 0;
+	flex: 1 1 auto;
+	overflow-wrap: break-word;
+	word-break: break-word;
+	width: 60%;
+}
+.cwe-entry-sub {
+	color: var(--muted);
+	font-size: 11px;
+	width: 30%;
+	flex-shrink: 1;
+	text-align: right;
+	overflow-wrap: break-word;
+	word-break: break-word;
+}
 
 .cwe-detail { margin-top: 18px; border-top: 1px solid var(--border2); padding-top: 14px; }
 .cwe-dt-head { margin: 0 0 4px; }
