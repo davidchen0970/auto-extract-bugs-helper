@@ -12,7 +12,7 @@
 }
 .cwe-filter { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; }
 
-.cwe-list { display: flex; flex-direction: column; gap: 6px; }
+.cwe-list, .vuln-list { display: flex; flex-direction: column; gap: 6px; }
 .cwe-entry {
 	text-align: left;
 	border: 1px solid var(--border);
